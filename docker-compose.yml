@@ -1,0 +1,17 @@
+services:
+  n8n:
+    build: .
+    container_name: pingen-n8n
+    ports:
+      - "5678:5678"
+    environment:
+      - GENERIC_TIMEZONE=Europe/Warsaw
+      - TZ=Europe/Warsaw
+      - N8N_LOG_LEVEL=debug
+      - NODE_OPTIONS=--stack-trace-limit=50
+    volumes:
+      - n8n_data:/home/node/.n8n
+    restart: unless-stopped
+
+volumes:
+  n8n_data:

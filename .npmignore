@@ -1,0 +1,13 @@
+# `files: ["dist"]` in package.json is the primary whitelist.
+# This file is a defence-in-depth against accidental ship of dev-only artefacts.
+*.ts
+!dist/**/*.d.ts
+
+.github/
+.idea/
+.vscode/
+coverage/
+test/
+*.map
+*.log
+.DS_Store

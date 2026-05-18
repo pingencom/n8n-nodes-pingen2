@@ -1,0 +1,31 @@
+name: Feature request
+description: Propose a new operation, field, or workflow improvement.
+labels: ['enhancement']
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to accomplish that the node currently makes hard or impossible?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What would the ideal node behaviour / UX / field layout look like?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any workarounds you've tried, or other approaches.
+
+  - type: input
+    id: pingen-endpoint
+    attributes:
+      label: Relevant Pingen API endpoint (if known)
+      placeholder: e.g. POST /organisations/{id}/webhooks

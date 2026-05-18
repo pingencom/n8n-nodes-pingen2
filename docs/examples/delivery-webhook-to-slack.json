@@ -1,0 +1,36 @@
+{
+  "name": "Pingen delivery webhook → Slack",
+  "nodes": [
+    {
+      "parameters": {
+        "eventType": "delivered",
+        "webhookSecret": "={{ $env.PINGEN_WEBHOOK_DELIVERED_SECRET }}"
+      },
+      "id": "pingen-trigger",
+      "name": "Pingen: Delivered",
+      "type": "n8n-nodes-pingen2.pingenTrigger",
+      "typeVersion": 1,
+      "position": [200, 300],
+      "webhookId": "pingen-delivered"
+    },
+    {
+      "parameters": {
+        "channel": "#ops",
+        "text": "=✉️ Letter *{{ $json.letter_id }}* delivered on {{ $json.created_at }}"
+      },
+      "id": "slack",
+      "name": "Slack: Notify",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [440, 300]
+    }
+  ],
+  "connections": {
+    "Pingen: Delivered": {
+      "main": [[{ "node": "Slack: Notify", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "example-3"
+}

@@ -1,0 +1,59 @@
+{
+  "name": "Stripe → Pingen: send paid invoice as a letter",
+  "nodes": [
+    {
+      "parameters": {
+        "events": ["invoice.paid"]
+      },
+      "id": "stripe-trigger",
+      "name": "Stripe Trigger",
+      "type": "n8n-nodes-base.stripeTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.invoice_pdf }}",
+        "options": {
+          "response": { "response": { "responseFormat": "file" } }
+        }
+      },
+      "id": "http-download",
+      "name": "Download Invoice PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "environment": "production",
+        "organisationId": "={{ $env.PINGEN_ORG_ID }}",
+        "resource": "letter",
+        "operation": "uploadAndCreate",
+        "binaryPropertyName": "data",
+        "fileOriginalName": "={{ 'invoice-' + $('Stripe Trigger').item.json.number + '.pdf' }}",
+        "addressPosition": "left",
+        "autoSend": true,
+        "deliveryProduct": "cheap",
+        "printMode": "simplex",
+        "printSpectrum": "grayscale"
+      },
+      "id": "pingen-send",
+      "name": "Pingen: Upload & Send Invoice",
+      "type": "n8n-nodes-pingen2.pingen",
+      "typeVersion": 1,
+      "position": [720, 300]
+    }
+  ],
+  "connections": {
+    "Stripe Trigger": {
+      "main": [[{ "node": "Download Invoice PDF", "type": "main", "index": 0 }]]
+    },
+    "Download Invoice PDF": {
+      "main": [[{ "node": "Pingen: Upload & Send Invoice", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "example-1"
+}

@@ -1,0 +1,100 @@
+{
+  "name": "Monthly reminder batch → Pingen",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "cronExpression", "expression": "0 9 1 * *" }] }
+      },
+      "id": "cron",
+      "name": "Cron (1st of month, 09:00)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, name, address_country FROM customers WHERE payment_status = 'overdue'"
+      },
+      "id": "postgres",
+      "name": "Postgres: Fetch overdue",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.PDF_GENERATOR_URL }}/reminders",
+        "method": "POST",
+        "jsonBody": "={{ JSON.stringify({ customers: $items().map(i => i.json) }) }}",
+        "options": { "response": { "response": { "responseFormat": "file" } } }
+      },
+      "id": "http-pdf",
+      "name": "Generate Reminders PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "environment": "production",
+        "organisationId": "={{ $env.PINGEN_ORG_ID }}",
+        "resource": "batch",
+        "operation": "uploadAndCreate",
+        "batchBinaryPropertyName": "data",
+        "batchName": "={{ 'Reminders ' + $now.format('yyyy-MM') }}",
+        "batchFileOriginalName": "reminders.pdf",
+        "batchIcon": "document",
+        "batchAddressPosition": "left",
+        "batchGroupingType": "merge",
+        "batchSplitType": "page",
+        "batchSplitSize": 1
+      },
+      "id": "pingen-create",
+      "name": "Pingen: Create Batch",
+      "type": "n8n-nodes-pingen2.pingen",
+      "typeVersion": 1,
+      "position": [920, 300]
+    },
+    {
+      "parameters": {
+        "environment": "production",
+        "organisationId": "={{ $env.PINGEN_ORG_ID }}",
+        "resource": "batch",
+        "operation": "send",
+        "batchId": "={{ $json.id }}",
+        "batchDeliveryProducts": {
+          "pair": [
+            { "country": "CH", "deliveryProduct": "cheap" },
+            { "country": "DE", "deliveryProduct": "cheap" },
+            { "country": "AT", "deliveryProduct": "fast" }
+          ]
+        },
+        "batchPrintMode": "simplex",
+        "batchPrintSpectrum": "grayscale"
+      },
+      "id": "pingen-send",
+      "name": "Pingen: Send Batch",
+      "type": "n8n-nodes-pingen2.pingen",
+      "typeVersion": 1,
+      "position": [1160, 300]
+    }
+  ],
+  "connections": {
+    "Cron (1st of month, 09:00)": {
+      "main": [[{ "node": "Postgres: Fetch overdue", "type": "main", "index": 0 }]]
+    },
+    "Postgres: Fetch overdue": {
+      "main": [[{ "node": "Generate Reminders PDF", "type": "main", "index": 0 }]]
+    },
+    "Generate Reminders PDF": {
+      "main": [[{ "node": "Pingen: Create Batch", "type": "main", "index": 0 }]]
+    },
+    "Pingen: Create Batch": {
+      "main": [[{ "node": "Pingen: Send Batch", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "example-2"
+}

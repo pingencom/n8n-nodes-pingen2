@@ -1,0 +1,64 @@
+name: Bug report
+description: Something in the Pingen node is not behaving as expected.
+labels: ['bug']
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug. Screenshots of the failing node output welcome.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: Minimal steps (or a small workflow JSON) that triggers the bug.
+      placeholder: |
+        1. Create credential …
+        2. Add Pingen node with operation …
+        3. Execute …
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Pingen environment
+      options:
+        - Production
+        - Staging
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: node-version
+    attributes:
+      label: n8n-nodes-pingen2 version
+      placeholder: e.g. 1.0.3
+    validations:
+      required: true
+
+  - type: input
+    id: n8n-version
+    attributes:
+      label: n8n version
+      placeholder: e.g. 1.80.0
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / error output
+      description: Paste error messages from the node (redact PII like recipient addresses or PDF contents).
+      render: shell

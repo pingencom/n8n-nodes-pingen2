@@ -1,0 +1,83 @@
+{
+  "name": "n8n-nodes-pingen2",
+  "version": "0.0.0-development",
+  "description": "Send physical mail with Pingen directly from n8n. One-click postal dispatch for invoices, reminders, contracts, and any PDF.",
+  "keywords": [
+    "n8n-community-node-package",
+    "n8n",
+    "n8n-node",
+    "pingen",
+    "pingen-api",
+    "postal",
+    "postal-mail",
+    "physical-mail",
+    "direct-mail",
+    "letter",
+    "mailing",
+    "print-and-mail",
+    "send-letter",
+    "workflow-automation"
+  ],
+  "license": "BSD-3-Clause",
+  "author": {
+    "name": "Pingen GmbH",
+    "email": "info@pingen.com"
+  },
+  "homepage": "https://github.com/pingencom/n8n-nodes-pingen2",
+  "bugs": {
+    "url": "https://github.com/pingencom/n8n-nodes-pingen2/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pingencom/n8n-nodes-pingen2.git"
+  },
+  "main": "dist/nodes/Pingen/Pingen.node.js",
+  "engines": {
+    "node": ">=20.15.0"
+  },
+  "scripts": {
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "npm run clean && tsc && gulp build:icons",
+    "dev": "tsc --watch",
+    "lint": "eslint nodes credentials utils services types errors --ext .ts",
+    "lint:fix": "eslint nodes credentials utils services types errors --ext .ts --fix",
+    "format": "prettier --write 'nodes/**/*.ts' 'credentials/**/*.ts' 'utils/**/*.ts' 'services/**/*.ts' 'types/**/*.ts' 'errors/**/*.ts' 'test/**/*.ts'",
+    "format:check": "prettier --check 'nodes/**/*.ts' 'credentials/**/*.ts' 'utils/**/*.ts' 'services/**/*.ts' 'types/**/*.ts' 'errors/**/*.ts' 'test/**/*.ts'",
+    "test": "jest --coverage",
+    "test:watch": "jest --watch",
+    "check": "npm run format:check && npm run lint && npm run test",
+    "prepublishOnly": "npm run check && npm run build"
+  },
+  "files": [
+    "dist"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/PingenApi.credentials.js",
+      "dist/credentials/PingenStagingApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/Pingen/Pingen.node.js",
+      "dist/nodes/PingenTrigger/PingenTrigger.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/node": "^20.17.0",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-n8n-nodes-base": "^1.16.6",
+    "gulp": "^4.0.2",
+    "jest": "^29.7.0",
+    "n8n-workflow": "^1.70.0",
+    "prettier": "^3.8.3",
+    "ts-jest": "^29.3.0",
+    "typescript": "^5.7.0"
+  },
+  "peerDependencies": {
+    "n8n-workflow": ">=1.0.0"
+  }
+}
