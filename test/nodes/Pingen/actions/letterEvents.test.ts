@@ -15,7 +15,7 @@ describe('letterEventHandlers.getAllForLetter', () => {
       items: unknown[];
     };
     expect(result.items).toHaveLength(1);
-    const url = (ctx.helpers.request as jest.Mock).mock.calls[0][0].url;
+    const url = (ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0].url;
     expect(url).toContain('/letters/letter-1/events');
     expect(url).not.toContain('?');
   });
@@ -26,7 +26,7 @@ describe('letterEventHandlers.getAllForLetter', () => {
       requests: [mockJsonApiCollection([])],
     });
     await letterEventHandlers.getAllForLetter(ctx, 0, ORG, HEADERS, API);
-    expect((ctx.helpers.request as jest.Mock).mock.calls[0][0].url).toContain('?page[size]=50');
+    expect((ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0].url).toContain('?page[size]=50');
   });
 });
 
@@ -44,7 +44,7 @@ describe.each([
       requests: [mockJsonApiCollection([])],
     });
     await handler(ctx, 0, ORG, HEADERS, API);
-    expect((ctx.helpers.request as jest.Mock).mock.calls[0][0].url).toContain(`/events/${path}`);
+    expect((ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0].url).toContain(`/events/${path}`);
   });
 
   it(`appends qs to /events/${path}`, async () => {
@@ -53,6 +53,6 @@ describe.each([
       requests: [mockJsonApiCollection([])],
     });
     await handler(ctx, 0, ORG, HEADERS, API);
-    expect((ctx.helpers.request as jest.Mock).mock.calls[0][0].url).toContain(`/events/${path}?page[number]=3`);
+    expect((ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0].url).toContain(`/events/${path}?page[number]=3`);
   });
 });

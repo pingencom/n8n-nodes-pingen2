@@ -18,7 +18,7 @@
     "send-letter",
     "workflow-automation"
   ],
-  "license": "BSD-3-Clause",
+  "license": "MIT",
   "author": {
     "name": "Pingen GmbH",
     "email": "info@pingen.com"
@@ -78,6 +78,6 @@
     "typescript": "^5.7.0"
   },
   "peerDependencies": {
-    "n8n-workflow": ">=1.0.0"
+    "n8n-workflow": "*"
   }
 }

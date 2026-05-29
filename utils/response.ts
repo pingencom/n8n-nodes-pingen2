@@ -93,6 +93,9 @@ export function contentTypeOrDefault(mimeType: unknown, fallback = 'application/
 }
 
 export function safeParseJson<T = unknown>(raw: unknown, context: string): T {
+  if (raw && typeof raw === 'object') {
+    return raw as T;
+  }
   if (typeof raw !== 'string') {
     throw new Error(`${context}: expected a JSON string response, got ${typeof raw}.`);
   }
@@ -115,16 +118,7 @@ export function tryParseJson(raw: unknown): unknown {
 }
 
 export function parseFileUploadResponse(raw: unknown): { url: string; url_signature: string } {
-  if (typeof raw !== 'string') {
-    throw new Error('file-upload: expected JSON string response.');
-  }
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    throw new Error('file-upload: response is not valid JSON.');
-  }
-  const attr = (parsed as { data?: { attributes?: { url?: unknown; url_signature?: unknown } } })?.data?.attributes;
+  const attr = (raw as { data?: { attributes?: { url?: unknown; url_signature?: unknown } } })?.data?.attributes;
   if (!attr || typeof attr.url !== 'string' || typeof attr.url_signature !== 'string') {
     throw new Error('file-upload: response missing url or url_signature.');
   }

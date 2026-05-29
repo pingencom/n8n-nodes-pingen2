@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { sleep } from 'n8n-workflow';
+import type { IHttpRequestOptions } from 'n8n-workflow';
 import type { RetryableError } from '../types';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -10,7 +12,7 @@ const MAX_RETRY_AFTER_MS = 10_000;
 // Base for exponential backoff; attempt N waits BASE * 2^N ms (+jitter).
 const BASE_BACKOFF_MS = 250;
 
-type RequestCtx = { helpers: { request: (options: object) => Promise<unknown> } };
+type RequestCtx = { helpers: { httpRequest: (options: IHttpRequestOptions) => Promise<unknown> } };
 
 // Retry policy:
 //   429 — always safe (server rejected before processing); honours Retry-After.
@@ -34,17 +36,17 @@ async function attemptRequest(
   maxAttempts: number,
 ): Promise<unknown> {
   try {
-    return await ctx.helpers.request(options);
+    return await ctx.helpers.httpRequest(options as IHttpRequestOptions);
   } catch (err) {
     const e = err as RetryableError;
-    const status = e.statusCode ?? 0;
+    const status = e.response?.status ?? 0;
     const retryable = status === 429 || (status >= 500 && (isIdempotent || isMutation));
     if (!retryable || attempt === maxAttempts - 1) {
       throw err;
     }
     const base = Math.max(extractRetryAfterMs(e), BASE_BACKOFF_MS * 2 ** attempt);
     const waitMs = Math.round(base * (0.8 + Math.random() * 0.4));
-    await new Promise((r) => setTimeout(r, waitMs));
+    await sleep(waitMs);
     return attemptRequest(ctx, options, isIdempotent, isMutation, attempt + 1, maxAttempts);
   }
 }

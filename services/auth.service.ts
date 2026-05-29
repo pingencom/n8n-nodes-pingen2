@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import type { IHttpRequestOptions } from 'n8n-workflow';
 import {
   SCOPE,
   USER_AGENT,
@@ -34,7 +35,7 @@ function cacheKey(environment: string, clientId: string, clientSecret: string): 
 }
 
 type TokenCtx = {
-  helpers: { request: (options: object) => Promise<unknown> };
+  helpers: { httpRequest: (options: IHttpRequestOptions) => Promise<unknown> };
   getCredentials: (name: string) => Promise<Record<string, unknown>>;
 };
 
@@ -44,26 +45,18 @@ async function fetchToken(
   clientId: string,
   clientSecret: string,
 ): Promise<TokenEntry> {
-  const res = await ctx.helpers.request({
+  const res = await ctx.helpers.httpRequest({
     method: 'POST',
     url: `${identityUrl}/auth/access-tokens`,
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': USER_AGENT },
-    form: {
+    body: new URLSearchParams({
       grant_type: 'client_credentials',
       client_id: clientId,
       client_secret: clientSecret,
       scope: SCOPE,
-    },
+    }),
   });
-  if (typeof res !== 'string') {
-    throw new Error('Token endpoint did not return a JSON string.');
-  }
-  let parsed: { access_token?: unknown; expires_in?: unknown };
-  try {
-    parsed = JSON.parse(res);
-  } catch {
-    throw new Error('Token endpoint returned invalid JSON.');
-  }
+  const parsed = (res ?? {}) as { access_token?: unknown; expires_in?: unknown };
   if (typeof parsed.access_token !== 'string' || typeof parsed.expires_in !== 'number') {
     throw new Error('Token endpoint response missing access_token or expires_in.');
   }

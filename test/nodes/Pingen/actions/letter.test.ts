@@ -33,8 +33,8 @@ describe('letterHandlers.uploadAndCreate', () => {
     };
     expect(result.id).toBe('letter-1');
     expect(result.status).toBe('valid');
-    expect(ctx.helpers.request).toHaveBeenCalledTimes(3);
-    const createCall = (ctx.helpers.request as jest.Mock).mock.calls[2][0];
+    expect(ctx.helpers.httpRequest).toHaveBeenCalledTimes(3);
+    const createCall = (ctx.helpers.httpRequest as jest.Mock).mock.calls[2][0];
     expect(createCall.url).toContain('/organisations/org-1/deliveries/letters');
     const body = JSON.parse(createCall.body);
     expect(body.data.attributes.auto_send).toBe(false);
@@ -58,7 +58,7 @@ describe('letterHandlers.uploadAndCreate', () => {
       requests: [mockFileUploadResponse(), '', mockJsonApiSingle('letter-1', 'letters', {})],
     });
     await letterHandlers.uploadAndCreate(ctx, 0, ORG, HEADERS, API);
-    const body = JSON.parse((ctx.helpers.request as jest.Mock).mock.calls[2][0].body);
+    const body = JSON.parse((ctx.helpers.httpRequest as jest.Mock).mock.calls[2][0].body);
     expect(body.data.attributes.file_original_name).toBe(expected);
   });
 
@@ -76,7 +76,7 @@ describe('letterHandlers.uploadAndCreate', () => {
       requests: [mockFileUploadResponse(), '', mockJsonApiSingle('letter-1', 'letters', {})],
     });
     await letterHandlers.uploadAndCreate(ctx, 0, ORG, HEADERS, API);
-    const putCall = (ctx.helpers.request as jest.Mock).mock.calls[1][0];
+    const putCall = (ctx.helpers.httpRequest as jest.Mock).mock.calls[1][0];
     expect(putCall.headers['Content-Type']).toBe('application/pdf');
   });
 
@@ -143,7 +143,7 @@ describe('letterHandlers.uploadAndCreate', () => {
       requests: [mockFileUploadResponse(), '', mockJsonApiSingle('letter-1', 'letters', { status: 'valid' })],
     });
     await letterHandlers.uploadAndCreate(ctx, 0, ORG, HEADERS, API);
-    const body = JSON.parse((ctx.helpers.request as jest.Mock).mock.calls[2][0].body);
+    const body = JSON.parse((ctx.helpers.httpRequest as jest.Mock).mock.calls[2][0].body);
     expect(body.data.attributes.delivery_product).toBe('cheap');
     expect(body.data.attributes.meta_data).toBeUndefined();
     expect(body.data.relationships.preset.data.id).toBe('preset-xyz');
@@ -172,7 +172,7 @@ describe('letterHandlers.uploadAndCreate', () => {
       requests: [mockFileUploadResponse(), '', mockJsonApiSingle('letter-1', 'letters', {})],
     });
     await letterHandlers.uploadAndCreate(ctx, 0, ORG, HEADERS, API);
-    const body = JSON.parse((ctx.helpers.request as jest.Mock).mock.calls[2][0].body);
+    const body = JSON.parse((ctx.helpers.httpRequest as jest.Mock).mock.calls[2][0].body);
     expect(body.data.attributes.meta_data?.recipient?.name).toBe(expected.recipient);
     expect(body.data.attributes.meta_data?.sender?.name).toBe(expected.sender);
   });
@@ -193,7 +193,7 @@ describe('letterHandlers.send', () => {
     });
     const result = (await letterHandlers.send(ctx, 0, ORG, HEADERS, API)) as { status: string };
     expect(result.status).toBe('sent');
-    const call = (ctx.helpers.request as jest.Mock).mock.calls[0][0];
+    const call = (ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0];
     expect(call.url).toContain('/letters/letter-1/send');
     expect(JSON.parse(call.body).data.attributes.meta_data).toBeUndefined();
   });
@@ -212,7 +212,7 @@ describe('letterHandlers.send', () => {
       requests: [mockJsonApiSingle('letter-1', 'letters', { status: 'sent' })],
     });
     await letterHandlers.send(ctx, 0, ORG, HEADERS, API);
-    const body = JSON.parse((ctx.helpers.request as jest.Mock).mock.calls[0][0].body);
+    const body = JSON.parse((ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0].body);
     expect(body.data.attributes.meta_data.recipient.name).toBe('Jane');
   });
 });
@@ -240,7 +240,7 @@ describe('letterHandlers.getAll', () => {
     };
     expect(result.items).toHaveLength(1);
     expect(result.total).toBe(1);
-    expect((ctx.helpers.request as jest.Mock).mock.calls[0][0].url).not.toContain('?');
+    expect((ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0].url).not.toContain('?');
   });
 
   it('appends query string', async () => {
@@ -249,7 +249,7 @@ describe('letterHandlers.getAll', () => {
       requests: [mockJsonApiCollection([])],
     });
     await letterHandlers.getAll(ctx, 0, ORG, HEADERS, API);
-    expect((ctx.helpers.request as jest.Mock).mock.calls[0][0].url).toContain('?page[number]=2');
+    expect((ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0].url).toContain('?page[number]=2');
   });
 });
 
@@ -267,7 +267,7 @@ describe('letterHandlers.calculatePrice', () => {
     });
     const result = (await letterHandlers.calculatePrice(ctx, 0, ORG, HEADERS, API)) as { price_currency: string };
     expect(result.price_currency).toBe('CHF');
-    const body = JSON.parse((ctx.helpers.request as jest.Mock).mock.calls[0][0].body);
+    const body = JSON.parse((ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0].body);
     expect(body.data.attributes.country).toBe('CH');
     expect(body.data.attributes.paper_types).toEqual(['normal']);
   });
@@ -281,6 +281,6 @@ describe('letterHandlers.cancel', () => {
     });
     const result = (await letterHandlers.cancel(ctx, 0, ORG, HEADERS, API)) as { status: string };
     expect(result.status).toBe('cancelled');
-    expect((ctx.helpers.request as jest.Mock).mock.calls[0][0].method).toBe('PATCH');
+    expect((ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0].method).toBe('PATCH');
   });
 });

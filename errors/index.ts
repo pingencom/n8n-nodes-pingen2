@@ -4,7 +4,7 @@ import type { RetryableError } from '../types';
 export function extractErrorMessage(error: unknown): string {
   const err = error as RetryableError;
   let message = err.message;
-  const body = err.response?.body;
+  const body = err.response?.data;
 
   if (body != null) {
     const parsed = tryParseJson(body);
@@ -28,8 +28,9 @@ export function extractErrorMessage(error: unknown): string {
     }
   }
 
-  if (err.statusCode) {
-    message = `[${err.statusCode}] ${message}`;
+  const status = err.response?.status;
+  if (status) {
+    message = `[${status}] ${message}`;
   }
   return message;
 }
