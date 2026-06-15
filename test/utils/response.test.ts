@@ -2,7 +2,6 @@ import {
   contentTypeOrDefault,
   flattenJsonApi,
   parseFileUploadResponse,
-  parseJsonApiSingle,
   safeParseJson,
   tryParseJson,
 } from '../../utils/response';
@@ -147,27 +146,6 @@ describe('flattenJsonApi', () => {
       meta: { request_id: 'r1' },
     });
     expect((result as { meta: { request_id: string } }).meta.request_id).toBe('r1');
-  });
-});
-
-describe('parseJsonApiSingle', () => {
-  it('parses valid JSON:API single response', () => {
-    const raw = JSON.stringify({ data: { id: 'x', type: 'letters', attributes: { status: 'sent' } } });
-    const result = parseJsonApiSingle(raw, 'ctx');
-    expect(result.data.id).toBe('x');
-  });
-
-  it.each([
-    ['non-string input', { data: {} } as unknown, /expected JSON string/],
-    ['invalid JSON', 'not json', /not valid JSON/],
-    ['parsed null', 'null', /not an object/],
-    ['parsed string', '"string"', /not an object/],
-    ['data missing', JSON.stringify({}), /missing "data"/],
-    ['data is array', JSON.stringify({ data: [] }), /missing "data"/],
-    ['id/type missing', JSON.stringify({ data: { attributes: {} } }), /missing id\/type/],
-    ['attributes missing', JSON.stringify({ data: { id: 'x', type: 'y' } }), /attributes" missing/],
-  ])('throws on %s', (_label, input, pattern) => {
-    expect(() => parseJsonApiSingle(input, 'ctx')).toThrow(pattern);
   });
 });
 

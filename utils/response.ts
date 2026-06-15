@@ -1,5 +1,3 @@
-import type { JsonApiSingleResponse } from '../types';
-
 export function flattenJsonApi(raw: unknown): unknown {
   if (!raw || typeof raw !== 'object') {
     return raw;
@@ -53,36 +51,6 @@ export function flattenJsonApi(raw: unknown): unknown {
 function stripKey(obj: Record<string, unknown>, key: string): Record<string, unknown> {
   const { [key]: _ignored, ...rest } = obj;
   return rest;
-}
-
-export function parseJsonApiSingle<A = Record<string, unknown>>(
-  raw: unknown,
-  context: string,
-): JsonApiSingleResponse<A> {
-  if (typeof raw !== 'string') {
-    throw new Error(`${context}: expected JSON string response, got ${typeof raw}.`);
-  }
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    throw new Error(`${context}: response is not valid JSON.`);
-  }
-  if (!parsed || typeof parsed !== 'object') {
-    throw new Error(`${context}: response is not an object.`);
-  }
-  const obj = parsed as Record<string, unknown>;
-  if (!obj.data || typeof obj.data !== 'object' || Array.isArray(obj.data)) {
-    throw new Error(`${context}: response missing "data" resource.`);
-  }
-  const d = obj.data as Record<string, unknown>;
-  if (typeof d.id !== 'string' || typeof d.type !== 'string') {
-    throw new Error(`${context}: response "data" missing id/type.`);
-  }
-  if (!d.attributes || typeof d.attributes !== 'object') {
-    throw new Error(`${context}: response "data.attributes" missing.`);
-  }
-  return parsed as JsonApiSingleResponse<A>;
 }
 
 export function contentTypeOrDefault(mimeType: unknown, fallback = 'application/pdf'): string {
