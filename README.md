@@ -54,7 +54,7 @@ Switch back to **Environment → Production** when going live. Token caches are 
 
 ## Example use cases
 
-Ready-to-import workflow JSON lives in [`docs/examples/`](./docs/examples/).
+Ready-to-import workflow JSON lives in [`docs/examples/`](./docs/examples/README.md).
 
 ### 1. Send an invoice when a Stripe payment succeeds
 
@@ -245,7 +245,7 @@ Use the **Letter — Get** operation; the returned `attributes` include tracking
 
 ## License
 
-BSD 3-Clause — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).
 
 ## Contributing
 

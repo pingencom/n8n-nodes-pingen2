@@ -41,7 +41,7 @@ export function createMockCtx(opts: MockCtxOptions = {}) {
       return undefined;
     }),
     helpers: {
-      request: requestMock,
+      httpRequest: requestMock,
       assertBinaryData: jest.fn(() => opts.binary ?? { mimeType: 'application/pdf', fileName: 'doc.pdf' }),
       getBinaryDataBuffer: jest.fn(() => Promise.resolve(opts.binaryBuffer ?? Buffer.from('pdf-bytes'))),
     },
@@ -54,18 +54,20 @@ export function createMockCtx(opts: MockCtxOptions = {}) {
   return ctx as unknown as IExecuteFunctions & typeof ctx;
 }
 
-export const mockJsonApiSingle = (id: string, type: string, attributes: Record<string, unknown>) =>
-  JSON.stringify({ data: { id, type, attributes } });
+export const mockJsonApiSingle = (id: string, type: string, attributes: Record<string, unknown>) => ({
+  data: { id, type, attributes },
+});
 
 export const mockJsonApiCollection = (
   items: Array<{ id: string; type: string; attributes: Record<string, unknown> }>,
   total?: number,
-) => JSON.stringify({ data: items, meta: { total: total ?? items.length } });
+) => ({ data: items, meta: { total: total ?? items.length } });
 
-export const mockFileUploadResponse = (url = 'https://storage.example.com/upload?sig=abc') =>
-  JSON.stringify({
-    data: { id: 'upload-1', type: 'file_uploads', attributes: { url, url_signature: 'signature-xyz' } },
-  });
+export const mockFileUploadResponse = (url = 'https://storage.example.com/upload?sig=abc') => ({
+  data: { id: 'upload-1', type: 'file_uploads', attributes: { url, url_signature: 'signature-xyz' } },
+});
 
-export const mockTokenResponse = (token = 'tok-xyz', expiresIn = 3600) =>
-  JSON.stringify({ access_token: token, expires_in: expiresIn });
+export const mockTokenResponse = (token = 'tok-xyz', expiresIn = 3600) => ({
+  access_token: token,
+  expires_in: expiresIn,
+});

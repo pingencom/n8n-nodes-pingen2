@@ -133,17 +133,13 @@ export interface BatchSendAttributes {
   print_spectrum: PrintSpectrum;
 }
 
-export interface JsonApiSingleResponse<A = Record<string, unknown>> {
-  data: { id: string; type: string; attributes: A };
-}
-
-// Shape that n8n's helpers.request() errors conform to. We use an intersection with
-// `Error` so `message` is available on the same type; `response.body` is `unknown`
-// because Pingen may send string JSON, parsed JSON, HTML on 5xx, etc.
+// Shape that n8n's httpRequest (axios-based) errors conform to. We use an intersection
+// with `Error` so `message` is available on the same type; `response.data` is `unknown`
+// because Pingen may send parsed JSON, HTML on 5xx, etc.
 export type RetryableError = Error & {
-  statusCode?: number;
   response?: {
+    status?: number;
     headers?: Record<string, string | string[]>;
-    body?: unknown;
+    data?: unknown;
   };
 };

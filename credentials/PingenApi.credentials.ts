@@ -1,4 +1,4 @@
-import { IAuthenticateGeneric, ICredentialTestRequest, ICredentialType, INodeProperties } from 'n8n-workflow';
+import { ICredentialTestRequest, ICredentialType, INodeProperties } from 'n8n-workflow';
 import { USER_AGENT, SCOPE, PINGEN_IDENTITY_URL } from '../utils/constants';
 
 export class PingenApi implements ICredentialType {
@@ -32,17 +32,9 @@ export class PingenApi implements ICredentialType {
     },
   ];
 
-  authenticate: IAuthenticateGeneric = {
-    type: 'generic',
-    properties: {
-      headers: {
-        Accept: 'application/vnd.api+json',
-        'Content-Type': 'application/vnd.api+json',
-        'User-Agent': USER_AGENT,
-      },
-    },
-  };
-
+  // No `authenticate` block: Pingen uses OAuth2 client_credentials (a two-step token
+  // exchange) which IAuthenticateGeneric can't express. Auth is handled imperatively in
+  // services/auth.service.ts (getPingenConfig) and the node sends a manual Bearer header.
   test: ICredentialTestRequest = {
     request: {
       baseURL: PINGEN_IDENTITY_URL,

@@ -183,7 +183,7 @@ export class Pingen implements INodeType {
       async getOrganisations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
         const environment = (this.getCurrentNodeParameter('environment') as string | undefined) ?? 'production';
         const config = await getPingenConfig(this, environment);
-        const res = await this.helpers.request({
+        const res = await this.helpers.httpRequest({
           method: 'GET',
           url: `${config.apiUrl}/organisations`,
           headers: {
@@ -234,7 +234,7 @@ export class Pingen implements INodeType {
         results.push({ json: responseData as IDataObject, pairedItem: { item: i } });
       } catch (error) {
         const message = extractErrorMessage(error);
-        const statusCode = (error as { statusCode?: number }).statusCode;
+        const statusCode = (error as { response?: { status?: number } }).response?.status;
         if (this.continueOnFail()) {
           results.push({ json: { error: message, statusCode }, pairedItem: { item: i } });
           continue;

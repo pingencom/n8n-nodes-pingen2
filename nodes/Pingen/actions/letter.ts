@@ -384,7 +384,7 @@ const uploadAndCreate: OperationHandler = async (ctx, i, orgId, headers, apiUrl)
     headers,
     body: buildLetterPayload(attributes, preset),
   });
-  return flattenJsonApi(JSON.parse(createRaw as string));
+  return flattenJsonApi(createRaw);
 };
 
 const send: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
@@ -416,7 +416,7 @@ const send: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
       metaData,
     ),
   });
-  return flattenJsonApi(JSON.parse(res as string));
+  return flattenJsonApi(res);
 };
 
 const get: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
@@ -426,7 +426,7 @@ const get: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
     url: `${apiUrl}/organisations/${orgId}/deliveries/letters/${letterId}`,
     headers,
   });
-  return flattenJsonApi(JSON.parse(res as string));
+  return flattenJsonApi(res);
 };
 
 const getAll: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
@@ -436,7 +436,7 @@ const getAll: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
     url: `${apiUrl}/organisations/${orgId}/deliveries/letters${qs}`,
     headers,
   });
-  return flattenJsonApi(JSON.parse(res as string));
+  return flattenJsonApi(res);
 };
 
 const calculatePrice: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
@@ -459,7 +459,7 @@ const calculatePrice: OperationHandler = async (ctx, i, orgId, headers, apiUrl) 
       },
     }),
   });
-  return flattenJsonApi(JSON.parse(res as string));
+  return flattenJsonApi(res);
 };
 
 const cancel: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
@@ -469,7 +469,7 @@ const cancel: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
     url: `${apiUrl}/organisations/${orgId}/deliveries/letters/${letterId}/cancel`,
     headers,
   });
-  return flattenJsonApi(JSON.parse(res as string));
+  return flattenJsonApi(res);
 };
 
 export const letterHandlers = {

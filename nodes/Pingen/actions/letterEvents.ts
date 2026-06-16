@@ -60,7 +60,7 @@ const getAllForLetter: OperationHandler = async (ctx, i, orgId, headers, apiUrl)
     url: `${apiUrl}/organisations/${orgId}/deliveries/letters/${letterId}/events${qs}`,
     headers,
   });
-  return flattenJsonApi(JSON.parse(res as string));
+  return flattenJsonApi(res);
 };
 
 const eventCollectionHandler = (path: string): OperationHandler => {
@@ -71,7 +71,7 @@ const eventCollectionHandler = (path: string): OperationHandler => {
       url: `${apiUrl}/organisations/${orgId}/deliveries/letters/events/${path}${qs}`,
       headers,
     });
-    return flattenJsonApi(JSON.parse(res as string));
+    return flattenJsonApi(res);
   };
 };
 

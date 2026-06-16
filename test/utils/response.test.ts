@@ -2,7 +2,6 @@ import {
   contentTypeOrDefault,
   flattenJsonApi,
   parseFileUploadResponse,
-  parseJsonApiSingle,
   safeParseJson,
   tryParseJson,
 } from '../../utils/response';
@@ -34,8 +33,11 @@ describe('safeParseJson', () => {
   it('throws a context-annotated error on invalid JSON', () => {
     expect(() => safeParseJson('not json', 'organisations')).toThrow(/organisations: response is not valid JSON/);
   });
+  it('returns an already-parsed object unchanged (httpRequest auto-parses JSON)', () => {
+    const obj = { foo: 'bar' };
+    expect(safeParseJson(obj, 'ctx')).toBe(obj);
+  });
   it.each([
-    ['object', { foo: 'bar' }],
     ['number', 42],
     ['undefined', undefined],
     ['null', null],
@@ -147,45 +149,24 @@ describe('flattenJsonApi', () => {
   });
 });
 
-describe('parseJsonApiSingle', () => {
-  it('parses valid JSON:API single response', () => {
-    const raw = JSON.stringify({ data: { id: 'x', type: 'letters', attributes: { status: 'sent' } } });
-    const result = parseJsonApiSingle(raw, 'ctx');
-    expect(result.data.id).toBe('x');
-  });
-
-  it.each([
-    ['non-string input', { data: {} } as unknown, /expected JSON string/],
-    ['invalid JSON', 'not json', /not valid JSON/],
-    ['parsed null', 'null', /not an object/],
-    ['parsed string', '"string"', /not an object/],
-    ['data missing', JSON.stringify({}), /missing "data"/],
-    ['data is array', JSON.stringify({ data: [] }), /missing "data"/],
-    ['id/type missing', JSON.stringify({ data: { attributes: {} } }), /missing id\/type/],
-    ['attributes missing', JSON.stringify({ data: { id: 'x', type: 'y' } }), /attributes" missing/],
-  ])('throws on %s', (_label, input, pattern) => {
-    expect(() => parseJsonApiSingle(input, 'ctx')).toThrow(pattern);
-  });
-});
-
 describe('parseFileUploadResponse', () => {
   it('returns url + url_signature when shape is valid', () => {
-    const raw = JSON.stringify({ data: { attributes: { url: 'u', url_signature: 's' } } });
+    const raw = { data: { attributes: { url: 'u', url_signature: 's' } } };
     expect(parseFileUploadResponse(raw)).toEqual({ url: 'u', url_signature: 's' });
   });
 
   it('tolerates extra fields and missing id/type', () => {
-    const raw = JSON.stringify({ data: { attributes: { url: 'u', url_signature: 's', extra: 1 } } });
+    const raw = { data: { attributes: { url: 'u', url_signature: 's', extra: 1 } } };
     expect(() => parseFileUploadResponse(raw)).not.toThrow();
   });
 
   it.each([
-    ['non-string input', { data: {} } as unknown, /expected JSON string/],
-    ['invalid JSON', 'not json', /not valid JSON/],
-    ['url missing', JSON.stringify({ data: { attributes: { url_signature: 's' } } }), /missing url or url_signature/],
-    ['url_signature missing', JSON.stringify({ data: { attributes: { url: 'u' } } }), /missing url or url_signature/],
-    ['data.attributes missing', JSON.stringify({ data: {} }), /missing url or url_signature/],
-  ])('throws on %s', (_label, input, pattern) => {
-    expect(() => parseFileUploadResponse(input)).toThrow(pattern);
+    ['null input', null],
+    ['empty object', {}],
+    ['url missing', { data: { attributes: { url_signature: 's' } } }],
+    ['url_signature missing', { data: { attributes: { url: 'u' } } }],
+    ['data.attributes missing', { data: {} }],
+  ])('throws on %s', (_label, input) => {
+    expect(() => parseFileUploadResponse(input)).toThrow(/missing url or url_signature/);
   });
 });

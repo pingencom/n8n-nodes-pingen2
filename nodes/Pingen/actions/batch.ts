@@ -307,7 +307,7 @@ const uploadAndCreate: OperationHandler = async (ctx, i, orgId, headers, apiUrl)
     headers,
     body: buildBatchPayload(batchAttributes, preset),
   });
-  return flattenJsonApi(JSON.parse(createRaw as string));
+  return flattenJsonApi(createRaw);
 };
 
 const send: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
@@ -333,7 +333,7 @@ const send: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
       print_spectrum: ctx.getNodeParameter('batchPrintSpectrum', i) as PrintSpectrum,
     }),
   });
-  return flattenJsonApi(JSON.parse(res as string));
+  return flattenJsonApi(res);
 };
 
 const get: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
@@ -343,7 +343,7 @@ const get: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
     url: `${apiUrl}/organisations/${orgId}/batches/${batchId}`,
     headers,
   });
-  return flattenJsonApi(JSON.parse(res as string));
+  return flattenJsonApi(res);
 };
 
 const getAll: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
@@ -353,7 +353,7 @@ const getAll: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
     url: `${apiUrl}/organisations/${orgId}/batches${qs}`,
     headers,
   });
-  return flattenJsonApi(JSON.parse(res as string));
+  return flattenJsonApi(res);
 };
 
 const cancel: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
@@ -363,7 +363,7 @@ const cancel: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
     url: `${apiUrl}/organisations/${orgId}/batches/${batchId}/cancel`,
     headers,
   });
-  return flattenJsonApi(JSON.parse(res as string));
+  return flattenJsonApi(res);
 };
 
 const delete_: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
@@ -373,7 +373,7 @@ const delete_: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
     url: `${apiUrl}/organisations/${orgId}/batches/${batchId}`,
     headers,
   });
-  return res ? flattenJsonApi(JSON.parse(res as string)) : { deleted: true, batchId };
+  return res ? flattenJsonApi(res) : { deleted: true, batchId };
 };
 
 const getStatistics: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
@@ -383,7 +383,7 @@ const getStatistics: OperationHandler = async (ctx, i, orgId, headers, apiUrl) =
     url: `${apiUrl}/organisations/${orgId}/batches/${batchId}/statistics`,
     headers,
   });
-  return flattenJsonApi(JSON.parse(res as string));
+  return flattenJsonApi(res);
 };
 
 export const batchHandlers = {

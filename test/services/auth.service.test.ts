@@ -60,8 +60,10 @@ describe('constants sanity', () => {
   });
 });
 
-const tokenOk = (accessToken: string, expiresIn = 3600) =>
-  JSON.stringify({ access_token: accessToken, expires_in: expiresIn });
+const tokenOk = (accessToken: string, expiresIn = 3600) => ({
+  access_token: accessToken,
+  expires_in: expiresIn,
+});
 
 describe('getPingenConfig', () => {
   beforeEach(() => {
@@ -70,34 +72,34 @@ describe('getPingenConfig', () => {
 
   it('fetches and returns a fresh token with production apiUrl by default', async () => {
     const ctx = {
-      helpers: { request: jest.fn().mockResolvedValue(tokenOk('abc123')) },
+      helpers: { httpRequest: jest.fn().mockResolvedValue(tokenOk('abc123')) },
       getCredentials: jest.fn().mockResolvedValue({ clientId: 'c', clientSecret: 's' }),
     };
     const cfg = await getPingenConfig(ctx);
     expect(cfg.token).toBe('abc123');
     expect(cfg.apiUrl).toBe('https://api.pingen.com');
     expect(cfg.environment).toBe('production');
-    expect(ctx.helpers.request).toHaveBeenCalledTimes(1);
+    expect(ctx.helpers.httpRequest).toHaveBeenCalledTimes(1);
   });
 
   it('uses staging URLs when environment=staging and fetches the staging credential', async () => {
     const getCreds = jest.fn().mockResolvedValue({ clientId: 'c', clientSecret: 's' });
     const ctx = {
-      helpers: { request: jest.fn().mockResolvedValue(tokenOk('stg-token')) },
+      helpers: { httpRequest: jest.fn().mockResolvedValue(tokenOk('stg-token')) },
       getCredentials: getCreds,
     };
     const cfg = await getPingenConfig(ctx, 'staging');
     expect(cfg.apiUrl).toBe('https://api-staging.pingen.com');
     expect(cfg.environment).toBe('staging');
     expect(getCreds).toHaveBeenCalledWith('pingenStagingApi');
-    const tokenCall = (ctx.helpers.request as jest.Mock).mock.calls[0][0];
+    const tokenCall = (ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0];
     expect(tokenCall.url).toBe('https://identity-staging.pingen.com/auth/access-tokens');
   });
 
   it('isolates token cache between environments', async () => {
     const req = jest.fn().mockImplementation(() => Promise.resolve(tokenOk(`tok-${req.mock.calls.length}`)));
     const getCreds = jest.fn().mockResolvedValue({ clientId: 'c', clientSecret: 's' });
-    const ctx = { helpers: { request: req }, getCredentials: getCreds };
+    const ctx = { helpers: { httpRequest: req }, getCredentials: getCreds };
     const c1 = await getPingenConfig(ctx, 'production');
     const c2 = await getPingenConfig(ctx, 'staging');
     const c3 = await getPingenConfig(ctx, 'production');
@@ -112,7 +114,7 @@ describe('getPingenConfig', () => {
     ['clientSecret', { clientId: 'c', clientSecret: '' }],
   ])('throws when %s missing', async (_field, creds) => {
     const ctx = {
-      helpers: { request: jest.fn() },
+      helpers: { httpRequest: jest.fn() },
       getCredentials: jest.fn().mockResolvedValue(creds),
     };
     await expect(getPingenConfig(ctx)).rejects.toThrow(/credentials are missing/i);
@@ -126,7 +128,7 @@ describe('getPingenConfig', () => {
       .fn()
       .mockResolvedValueOnce({ clientId: 'c', clientSecret: 'secret-v1' })
       .mockResolvedValueOnce({ clientId: 'c', clientSecret: 'secret-v2' });
-    const ctx = { helpers: { request: req }, getCredentials: getCreds };
+    const ctx = { helpers: { httpRequest: req }, getCredentials: getCreds };
 
     const c1 = await getPingenConfig(ctx);
     const c2 = await getPingenConfig(ctx);
@@ -143,7 +145,7 @@ describe('getPingenConfig', () => {
       return Promise.resolve(tokenOk('fresh', 3600));
     });
     const ctx = {
-      helpers: { request: req },
+      helpers: { httpRequest: req },
       getCredentials: jest.fn().mockResolvedValue({ clientId: 'c', clientSecret: 's' }),
     };
 
@@ -158,40 +160,41 @@ describe('getPingenConfig', () => {
 
   it('uses separate cache entries per clientId', async () => {
     const ctx1 = {
-      helpers: { request: jest.fn().mockResolvedValue(tokenOk('tok-A')) },
+      helpers: { httpRequest: jest.fn().mockResolvedValue(tokenOk('tok-A')) },
       getCredentials: jest.fn().mockResolvedValue({ clientId: 'clientA', clientSecret: 's' }),
     };
     const ctx2 = {
-      helpers: { request: jest.fn().mockResolvedValue(tokenOk('tok-B')) },
+      helpers: { httpRequest: jest.fn().mockResolvedValue(tokenOk('tok-B')) },
       getCredentials: jest.fn().mockResolvedValue({ clientId: 'clientB', clientSecret: 's' }),
     };
     expect((await getPingenConfig(ctx1)).token).toBe('tok-A');
     expect((await getPingenConfig(ctx2)).token).toBe('tok-B');
     expect((await getPingenConfig(ctx1)).token).toBe('tok-A');
-    expect(ctx1.helpers.request).toHaveBeenCalledTimes(1);
-    expect(ctx2.helpers.request).toHaveBeenCalledTimes(1);
+    expect(ctx1.helpers.httpRequest).toHaveBeenCalledTimes(1);
+    expect(ctx2.helpers.httpRequest).toHaveBeenCalledTimes(1);
   });
 
   it.each([
-    ['non-string response', { not: 'string' }, /did not return a JSON string/],
-    ['invalid JSON', 'not json', /invalid JSON/],
-    ['missing fields', JSON.stringify({ access_token: 'x' }), /missing access_token or expires_in/],
-  ])('throws on malformed token response: %s', async (_label, value, pattern) => {
+    ['object missing all fields', { not: 'string' }],
+    ['null response', null],
+    ['only access_token, no expires_in', { access_token: 'x' }],
+    ['expires_in not a number', { access_token: 'x', expires_in: 'soon' }],
+  ])('throws on malformed token response: %s', async (_label, value) => {
     const ctx = {
-      helpers: { request: jest.fn().mockResolvedValue(value) },
+      helpers: { httpRequest: jest.fn().mockResolvedValue(value) },
       getCredentials: jest.fn().mockResolvedValue({ clientId: 'c', clientSecret: 's' }),
     };
-    await expect(getPingenConfig(ctx)).rejects.toThrow(pattern);
+    await expect(getPingenConfig(ctx)).rejects.toThrow(/missing access_token or expires_in/);
   });
 
   it('propagates rejection to concurrent callers sharing the same pending fetch', async () => {
     let rejectFetch: (e: Error) => void = () => {};
-    const pending = new Promise<string>((_resolve, reject) => {
+    const pending = new Promise<unknown>((_resolve, reject) => {
       rejectFetch = reject;
     });
     const req = jest.fn().mockReturnValueOnce(pending).mockResolvedValue(tokenOk('recovered'));
     const ctx = {
-      helpers: { request: req },
+      helpers: { httpRequest: req },
       getCredentials: jest.fn().mockResolvedValue({ clientId: 'c', clientSecret: 's' }),
     };
     const p1 = getPingenConfig(ctx);
@@ -206,7 +209,7 @@ describe('getPingenConfig', () => {
   it('retries fetch after previous pending promise failed', async () => {
     const failing = jest.fn().mockRejectedValueOnce(new Error('network')).mockResolvedValueOnce(tokenOk('good'));
     const ctx = {
-      helpers: { request: failing },
+      helpers: { httpRequest: failing },
       getCredentials: jest.fn().mockResolvedValue({ clientId: 'c', clientSecret: 's' }),
     };
     await expect(getPingenConfig(ctx)).rejects.toThrow(/network/);
@@ -215,13 +218,13 @@ describe('getPingenConfig', () => {
   });
 
   it('dedups concurrent fetches for same clientId', async () => {
-    let resolveFetch: (v: string) => void = () => {};
-    const pending = new Promise<string>((r) => {
+    let resolveFetch: (v: unknown) => void = () => {};
+    const pending = new Promise<unknown>((r) => {
       resolveFetch = r;
     });
     const req = jest.fn().mockReturnValue(pending);
     const ctx = {
-      helpers: { request: req },
+      helpers: { httpRequest: req },
       getCredentials: jest.fn().mockResolvedValue({ clientId: 'c', clientSecret: 's' }),
     };
     const p1 = getPingenConfig(ctx);
@@ -235,11 +238,11 @@ describe('getPingenConfig', () => {
 
   it('reuses cached token within expiry window', async () => {
     const ctx = {
-      helpers: { request: jest.fn().mockResolvedValue(tokenOk('abc123')) },
+      helpers: { httpRequest: jest.fn().mockResolvedValue(tokenOk('abc123')) },
       getCredentials: jest.fn().mockResolvedValue({ clientId: 'c', clientSecret: 's' }),
     };
     await getPingenConfig(ctx);
     await getPingenConfig(ctx);
-    expect(ctx.helpers.request).toHaveBeenCalledTimes(1);
+    expect(ctx.helpers.httpRequest).toHaveBeenCalledTimes(1);
   });
 });

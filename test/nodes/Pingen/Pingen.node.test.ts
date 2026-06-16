@@ -9,15 +9,13 @@ beforeEach(() => {
   clearTokenCache();
 });
 
-const tokenResponse = JSON.stringify({ access_token: 'tok-xyz', expires_in: 3600 });
+const tokenResponse = { access_token: 'tok-xyz', expires_in: 3600 };
 
-const mockExecuteCtx = (overrides: Parameters<typeof createMockCtx>[0] = {}) => {
-  const ctx = createMockCtx({
+const mockExecuteCtx = (overrides: Parameters<typeof createMockCtx>[0] = {}) =>
+  createMockCtx({
     inputData: [{ json: {} }],
     ...overrides,
   });
-  return ctx;
-};
 
 describe('Pingen.execute() dispatch', () => {
   it.each([
@@ -36,7 +34,7 @@ describe('Pingen.execute() dispatch', () => {
     [
       'letterEvent.getIssues',
       { resource: 'letterEvent', operation: 'getIssues', pageNumber: 0 },
-      JSON.stringify({ data: [], meta: { total: 0 } }),
+      { data: [], meta: { total: 0 } },
       { total: 0 },
     ],
   ] as const)('routes %s through the registry', async (_label, params, response, expected) => {
@@ -66,54 +64,52 @@ describe('Pingen.execute() dispatch', () => {
       [
         'JSON:API errors[].detail with statusCode prefix',
         Object.assign(new Error('bad'), {
-          statusCode: 404,
-          response: { body: '{"errors":[{"detail":"not found"}]}' },
+          response: { status: 404, data: '{"errors":[{"detail":"not found"}]}' },
         }),
         { statusCode: 404, error: '[404] not found' },
       ],
       [
         'error.body.error.message',
-        Object.assign(new Error('network'), { response: { body: '{"error":{"message":"server boom"}}' } }),
+        Object.assign(new Error('network'), { response: { data: '{"error":{"message":"server boom"}}' } }),
         { error: 'server boom' },
       ],
       [
         'error.body.message',
-        Object.assign(new Error('network'), { response: { body: '{"message":"plain message"}' } }),
+        Object.assign(new Error('network'), { response: { data: '{"message":"plain message"}' } }),
         { error: 'plain message' },
       ],
       [
         'multiple JSON:API errors joined with semicolons',
         Object.assign(new Error('x'), {
-          response: { body: '{"errors":[{"detail":"first"},{"detail":"second"},{"title":"third"}]}' },
+          response: { data: '{"errors":[{"detail":"first"},{"detail":"second"},{"title":"third"}]}' },
         }),
         { error: 'first; second; third' },
       ],
       [
         'errors[].title when detail absent',
-        Object.assign(new Error('orig'), { response: { body: '{"errors":[{"title":"Only title"}]}' } }),
+        Object.assign(new Error('orig'), { response: { data: '{"errors":[{"title":"Only title"}]}' } }),
         { error: 'Only title' },
       ],
       [
         'error.response.body already parsed (object)',
         Object.assign(new Error('orig'), {
-          statusCode: 400,
-          response: { body: { error: { message: 'parsed from object' } } },
+          response: { status: 400, data: { error: { message: 'parsed from object' } } },
         }),
         { error: '[400] parsed from object' },
       ],
       [
         'falls back to err.message when body has no known error shape',
-        Object.assign(new Error('original'), { response: { body: '{"unrelated":"field"}' } }),
+        Object.assign(new Error('original'), { response: { data: '{"unrelated":"field"}' } }),
         { error: 'original' },
       ],
       [
         'skips null entries inside errors[]',
-        Object.assign(new Error('x'), { response: { body: '{"errors":[null,{"detail":"real"}]}' } }),
+        Object.assign(new Error('x'), { response: { data: '{"errors":[null,{"detail":"real"}]}' } }),
         { error: 'real' },
       ],
       [
         'ignores errors field when not an array',
-        Object.assign(new Error('orig'), { response: { body: '{"errors":"not-an-array"}' } }),
+        Object.assign(new Error('orig'), { response: { data: '{"errors":"not-an-array"}' } }),
         { error: 'orig' },
       ],
     ])('%s', async (_label, error, expected) => {
@@ -125,7 +121,7 @@ describe('Pingen.execute() dispatch', () => {
       ['JSON body that is not an object', '42'],
       ['body is non-JSON text', 'not json at all, just text'],
     ])('treats %s as non-JSON', async (_label, body) => {
-      const result = await node.execute.call(buildCtx(Object.assign(new Error('x'), { response: { body } })));
+      const result = await node.execute.call(buildCtx(Object.assign(new Error('x'), { response: { data: body } })));
       expect((result[0]![0]!.json as { error: string }).error).toContain('non-JSON');
     });
   });
@@ -159,7 +155,7 @@ describe('Pingen.loadOptions.getOrganisations', () => {
   it('throws when orgs endpoint fails', async () => {
     const ctx = createMockCtx({
       credentials: { clientId: 'c', clientSecret: 's' },
-      requests: [JSON.stringify({ access_token: 'tok', expires_in: 3600 }), new Error('forbidden')],
+      requests: [{ access_token: 'tok', expires_in: 3600 }, new Error('forbidden')],
     });
     await expect(loadOptions.call(ctx as unknown as ILoadOptionsFunctions)).rejects.toThrow(/forbidden/);
   });
@@ -168,8 +164,8 @@ describe('Pingen.loadOptions.getOrganisations', () => {
     const ctx = createMockCtx({
       credentials: { clientId: 'c', clientSecret: 's' },
       requests: [
-        JSON.stringify({ access_token: 'tok', expires_in: 3600 }),
-        JSON.stringify({
+        { access_token: 'tok', expires_in: 3600 },
+        {
           data: [
             {
               id: 'org-a',
@@ -182,7 +178,7 @@ describe('Pingen.loadOptions.getOrganisations', () => {
               attributes: { name: 'Inactive Co', status: 'inactive', plan: 'free', default_country: 'DE' },
             },
           ],
-        }),
+        },
       ],
     });
     const result = await loadOptions.call(ctx as unknown as ILoadOptionsFunctions);
