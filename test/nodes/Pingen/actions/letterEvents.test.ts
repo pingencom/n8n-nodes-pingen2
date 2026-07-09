@@ -26,7 +26,7 @@ describe('letterEventHandlers.getAllForLetter', () => {
       requests: [mockJsonApiCollection([])],
     });
     await letterEventHandlers.getAllForLetter(ctx, 0, ORG, HEADERS, API);
-    expect((ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0].url).toContain('?page[size]=50');
+    expect((ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0].url).toContain('?page[limit]=50');
   });
 });
 

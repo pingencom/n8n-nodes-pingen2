@@ -84,6 +84,7 @@ export class Pingen implements INodeType {
     icon: 'file:pingen.svg',
     group: ['transform'],
     version: 1,
+    usableAsTool: true,
     subtitle: '={{$parameter["resource"] + ": " + $parameter["operation"] + " (" + $parameter["environment"] + ")"}}',
     description: 'Send physical postal letters through the Pingen API — invoices, reminders, contracts, any PDF.',
     defaults: { name: 'Pingen' },

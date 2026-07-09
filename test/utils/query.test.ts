@@ -22,9 +22,9 @@ describe('buildQueryString', () => {
     expect(buildQueryString(makeCtx({}), 0)).toBe('');
   });
 
-  it('emits page[number] and page[size] with raw brackets', () => {
+  it('emits page[number] and page[limit] with raw brackets', () => {
     const qs = buildQueryString(makeCtx({ pageNumber: 2, pageSize: 50 }), 0);
-    expect(qs).toBe('?page[number]=2&page[size]=50');
+    expect(qs).toBe('?page[number]=2&page[limit]=50');
   });
 
   it('skips page params when zero or negative', () => {
@@ -103,6 +103,6 @@ describe('buildQueryString', () => {
       }),
       0,
     );
-    expect(qs).toBe('?page[number]=1&page[size]=25&sort=-created_at&filter[status]=sent');
+    expect(qs).toBe('?page[number]=1&page[limit]=25&sort=-created_at&filter[status]=sent');
   });
 });

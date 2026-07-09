@@ -9,6 +9,8 @@ services:
       - TZ=Europe/Warsaw
       - N8N_LOG_LEVEL=debug
       - NODE_OPTIONS=--stack-trace-limit=50
+      # Allows community nodes (Pingen) to be used as tools by the AI Agent node
+      - N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true
     volumes:
       - n8n_data:/home/node/.n8n
     restart: unless-stopped
