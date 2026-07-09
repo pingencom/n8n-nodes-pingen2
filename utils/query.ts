@@ -13,7 +13,7 @@ export function buildQueryString(ctx: IExecuteFunctions, i: number): string {
     parts.push(`page[number]=${page}`);
   }
   if (size > 0) {
-    parts.push(`page[size]=${size}`);
+    parts.push(`page[limit]=${size}`);
   }
   if (sort) {
     const sortValue = sort

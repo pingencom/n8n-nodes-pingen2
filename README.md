@@ -222,7 +222,7 @@ All "list" operations expose structured fields:
 | **Sort** | JSON:API sort expression, e.g. `-created_at,name` (prefix with `-` for descending) |
 | **Additional Filters** | Key/value pairs — each becomes `filter[key]=value` on the URL |
 
-Under the hood these compose into `?page[number]=2&page[size]=50&sort=-created_at&filter[status]=sent`. See [Pingen API docs](https://api.pingen.com/documentation) for available filter/sort keys per endpoint.
+Under the hood these compose into `?page[number]=2&page[limit]=50&sort=-created_at&filter[status]=sent`. See [Pingen API docs](https://api.pingen.com/documentation) for available filter/sort keys per endpoint.
 
 ## Error handling
 
