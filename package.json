@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-pingen2",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Send physical mail with Pingen directly from n8n. One-click postal dispatch for invoices, reminders, contracts, and any PDF.",
   "keywords": [
     "n8n-community-node-package",
