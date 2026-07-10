@@ -1,19 +1,14 @@
 import { PINGEN_API_URL, normalizeEnvironment } from '../../utils/constants';
 import { DELIVERY_PRODUCTS } from '../../utils/options';
-import {
-  getPingenHeaders,
-  getPingenConfig,
-  clearTokenCache,
-  credentialNameForEnvironment,
-} from '../../services/auth.service';
+import { getPingenHeaders, credentialNameForEnvironment } from '../../services/auth.service';
 
 describe('credentialNameForEnvironment', () => {
-  it('maps staging → pingenStagingApi', () => {
-    expect(credentialNameForEnvironment('staging')).toBe('pingenStagingApi');
+  it('maps staging → pingenStagingOAuth2Api', () => {
+    expect(credentialNameForEnvironment('staging')).toBe('pingenStagingOAuth2Api');
   });
 
-  it('maps production → pingenApi', () => {
-    expect(credentialNameForEnvironment('production')).toBe('pingenApi');
+  it('maps production → pingenOAuth2Api', () => {
+    expect(credentialNameForEnvironment('production')).toBe('pingenOAuth2Api');
   });
 });
 
@@ -41,11 +36,12 @@ describe('normalizeEnvironment', () => {
 });
 
 describe('getPingenHeaders', () => {
-  it('sets Bearer token, JSON content type, and JSON:API accept header', () => {
-    const headers = getPingenHeaders('test-token-123');
-    expect(headers.Authorization).toBe('Bearer test-token-123');
+  it('sets JSON content type and JSON:API accept header (no Authorization — n8n injects it)', () => {
+    const headers = getPingenHeaders();
     expect(headers['Content-Type']).toBe('application/vnd.api+json');
     expect(headers.Accept).toBe('application/vnd.api+json');
+    expect(headers.Authorization).toBeUndefined();
+    expect(headers['User-Agent']).toBe('PINGEN.N8N');
   });
 });
 
@@ -57,192 +53,5 @@ describe('constants sanity', () => {
   it('DELIVERY_PRODUCTS matches Pingen API enum exactly', () => {
     const values = DELIVERY_PRODUCTS.map((p) => p.value).sort();
     expect(values).toEqual(['bulk', 'cheap', 'fast', 'premium', 'registered']);
-  });
-});
-
-const tokenOk = (accessToken: string, expiresIn = 3600) => ({
-  access_token: accessToken,
-  expires_in: expiresIn,
-});
-
-describe('getPingenConfig', () => {
-  beforeEach(() => {
-    clearTokenCache();
-  });
-
-  it('fetches and returns a fresh token with production apiUrl by default', async () => {
-    const ctx = {
-      helpers: { httpRequest: jest.fn().mockResolvedValue(tokenOk('abc123')) },
-      getCredentials: jest.fn().mockResolvedValue({ clientId: 'c', clientSecret: 's' }),
-    };
-    const cfg = await getPingenConfig(ctx);
-    expect(cfg.token).toBe('abc123');
-    expect(cfg.apiUrl).toBe('https://api.pingen.com');
-    expect(cfg.environment).toBe('production');
-    expect(ctx.helpers.httpRequest).toHaveBeenCalledTimes(1);
-  });
-
-  it('uses staging URLs when environment=staging and fetches the staging credential', async () => {
-    const getCreds = jest.fn().mockResolvedValue({ clientId: 'c', clientSecret: 's' });
-    const ctx = {
-      helpers: { httpRequest: jest.fn().mockResolvedValue(tokenOk('stg-token')) },
-      getCredentials: getCreds,
-    };
-    const cfg = await getPingenConfig(ctx, 'staging');
-    expect(cfg.apiUrl).toBe('https://api-staging.pingen.com');
-    expect(cfg.environment).toBe('staging');
-    expect(getCreds).toHaveBeenCalledWith('pingenStagingApi');
-    const tokenCall = (ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0];
-    expect(tokenCall.url).toBe('https://identity-staging.pingen.com/auth/access-tokens');
-  });
-
-  it('isolates token cache between environments', async () => {
-    const req = jest.fn().mockImplementation(() => Promise.resolve(tokenOk(`tok-${req.mock.calls.length}`)));
-    const getCreds = jest.fn().mockResolvedValue({ clientId: 'c', clientSecret: 's' });
-    const ctx = { helpers: { httpRequest: req }, getCredentials: getCreds };
-    const c1 = await getPingenConfig(ctx, 'production');
-    const c2 = await getPingenConfig(ctx, 'staging');
-    const c3 = await getPingenConfig(ctx, 'production');
-    expect(c1.token).toBe('tok-1');
-    expect(c2.token).toBe('tok-2');
-    expect(c3.token).toBe('tok-1'); // production cache still valid
-    expect(req).toHaveBeenCalledTimes(2);
-  });
-
-  it.each([
-    ['clientId', { clientId: '', clientSecret: 's' }],
-    ['clientSecret', { clientId: 'c', clientSecret: '' }],
-  ])('throws when %s missing', async (_field, creds) => {
-    const ctx = {
-      helpers: { httpRequest: jest.fn() },
-      getCredentials: jest.fn().mockResolvedValue(creds),
-    };
-    await expect(getPingenConfig(ctx)).rejects.toThrow(/credentials are missing/i);
-  });
-
-  it('invalidates cache when clientSecret rotates', async () => {
-    const tokens = ['old-token', 'new-token'];
-    let call = 0;
-    const req = jest.fn().mockImplementation(() => Promise.resolve(tokenOk(tokens[call++] ?? '')));
-    const getCreds = jest
-      .fn()
-      .mockResolvedValueOnce({ clientId: 'c', clientSecret: 'secret-v1' })
-      .mockResolvedValueOnce({ clientId: 'c', clientSecret: 'secret-v2' });
-    const ctx = { helpers: { httpRequest: req }, getCredentials: getCreds };
-
-    const c1 = await getPingenConfig(ctx);
-    const c2 = await getPingenConfig(ctx);
-    expect(c1.token).toBe('old-token');
-    expect(c2.token).toBe('new-token');
-    expect(req).toHaveBeenCalledTimes(2);
-  });
-
-  it('dedups concurrent callers hitting an expired cache entry', async () => {
-    let call = 0;
-    const req = jest.fn().mockImplementation(() => {
-      call += 1;
-      if (call === 1) return Promise.resolve(tokenOk('stale', 60));
-      return Promise.resolve(tokenOk('fresh', 3600));
-    });
-    const ctx = {
-      helpers: { httpRequest: req },
-      getCredentials: jest.fn().mockResolvedValue({ clientId: 'c', clientSecret: 's' }),
-    };
-
-    expect((await getPingenConfig(ctx)).token).toBe('stale');
-    expect(req).toHaveBeenCalledTimes(1);
-
-    const [c1, c2] = await Promise.all([getPingenConfig(ctx), getPingenConfig(ctx)]);
-    expect(c1.token).toBe('fresh');
-    expect(c2.token).toBe('fresh');
-    expect(req).toHaveBeenCalledTimes(2);
-  });
-
-  it('uses separate cache entries per clientId', async () => {
-    const ctx1 = {
-      helpers: { httpRequest: jest.fn().mockResolvedValue(tokenOk('tok-A')) },
-      getCredentials: jest.fn().mockResolvedValue({ clientId: 'clientA', clientSecret: 's' }),
-    };
-    const ctx2 = {
-      helpers: { httpRequest: jest.fn().mockResolvedValue(tokenOk('tok-B')) },
-      getCredentials: jest.fn().mockResolvedValue({ clientId: 'clientB', clientSecret: 's' }),
-    };
-    expect((await getPingenConfig(ctx1)).token).toBe('tok-A');
-    expect((await getPingenConfig(ctx2)).token).toBe('tok-B');
-    expect((await getPingenConfig(ctx1)).token).toBe('tok-A');
-    expect(ctx1.helpers.httpRequest).toHaveBeenCalledTimes(1);
-    expect(ctx2.helpers.httpRequest).toHaveBeenCalledTimes(1);
-  });
-
-  it.each([
-    ['object missing all fields', { not: 'string' }],
-    ['null response', null],
-    ['only access_token, no expires_in', { access_token: 'x' }],
-    ['expires_in not a number', { access_token: 'x', expires_in: 'soon' }],
-  ])('throws on malformed token response: %s', async (_label, value) => {
-    const ctx = {
-      helpers: { httpRequest: jest.fn().mockResolvedValue(value) },
-      getCredentials: jest.fn().mockResolvedValue({ clientId: 'c', clientSecret: 's' }),
-    };
-    await expect(getPingenConfig(ctx)).rejects.toThrow(/missing access_token or expires_in/);
-  });
-
-  it('propagates rejection to concurrent callers sharing the same pending fetch', async () => {
-    let rejectFetch: (e: Error) => void = () => {};
-    const pending = new Promise<unknown>((_resolve, reject) => {
-      rejectFetch = reject;
-    });
-    const req = jest.fn().mockReturnValueOnce(pending).mockResolvedValue(tokenOk('recovered'));
-    const ctx = {
-      helpers: { httpRequest: req },
-      getCredentials: jest.fn().mockResolvedValue({ clientId: 'c', clientSecret: 's' }),
-    };
-    const p1 = getPingenConfig(ctx);
-    const p2 = getPingenConfig(ctx);
-    rejectFetch(new Error('boom'));
-    const results = await Promise.allSettled([p1, p2]);
-    expect(results[0]!.status).toBe('rejected');
-    // one caller observes the rejected cache entry on its next loop iteration and retries
-    expect(results.some((r) => r.status === 'fulfilled')).toBe(true);
-  });
-
-  it('retries fetch after previous pending promise failed', async () => {
-    const failing = jest.fn().mockRejectedValueOnce(new Error('network')).mockResolvedValueOnce(tokenOk('good'));
-    const ctx = {
-      helpers: { httpRequest: failing },
-      getCredentials: jest.fn().mockResolvedValue({ clientId: 'c', clientSecret: 's' }),
-    };
-    await expect(getPingenConfig(ctx)).rejects.toThrow(/network/);
-    const cfg = await getPingenConfig(ctx);
-    expect(cfg.token).toBe('good');
-  });
-
-  it('dedups concurrent fetches for same clientId', async () => {
-    let resolveFetch: (v: unknown) => void = () => {};
-    const pending = new Promise<unknown>((r) => {
-      resolveFetch = r;
-    });
-    const req = jest.fn().mockReturnValue(pending);
-    const ctx = {
-      helpers: { httpRequest: req },
-      getCredentials: jest.fn().mockResolvedValue({ clientId: 'c', clientSecret: 's' }),
-    };
-    const p1 = getPingenConfig(ctx);
-    const p2 = getPingenConfig(ctx);
-    resolveFetch(tokenOk('shared'));
-    const [c1, c2] = await Promise.all([p1, p2]);
-    expect(c1.token).toBe('shared');
-    expect(c2.token).toBe('shared');
-    expect(req).toHaveBeenCalledTimes(1);
-  });
-
-  it('reuses cached token within expiry window', async () => {
-    const ctx = {
-      helpers: { httpRequest: jest.fn().mockResolvedValue(tokenOk('abc123')) },
-      getCredentials: jest.fn().mockResolvedValue({ clientId: 'c', clientSecret: 's' }),
-    };
-    await getPingenConfig(ctx);
-    await getPingenConfig(ctx);
-    expect(ctx.helpers.httpRequest).toHaveBeenCalledTimes(1);
   });
 });

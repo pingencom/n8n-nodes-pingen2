@@ -20,6 +20,7 @@ import { validateRegisteredAddress, validateCountryCode } from '../../../utils/v
 import { readEncodedIdParam } from '../../../utils/params';
 import { buildLetterPayload, buildSendPayload } from '../../../utils/payloads';
 import { pingenRequest } from '../../../services/http.service';
+import { getPingenHeaders } from '../../../services/auth.service';
 import { flattenJsonApi } from '../../../utils/response';
 import { uploadBinaryToPingen } from '../../../services/upload.service';
 import { buildQueryString } from '../../../utils/query';
@@ -309,7 +310,7 @@ const getAddressParts = (
   };
 };
 
-const uploadAndCreate: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
+const uploadAndCreate: OperationHandler = async (ctx, i, orgId, credentialsType, apiUrl) => {
   const binaryPropertyName = ctx.getNodeParameter('binaryPropertyName', i) as string;
   const fileOriginalName = (ctx.getNodeParameter('fileOriginalName', i) as string).trim();
   const addressPosition = ctx.getNodeParameter('addressPosition', i) as AddressPosition;
@@ -317,7 +318,7 @@ const uploadAndCreate: OperationHandler = async (ctx, i, orgId, headers, apiUrl)
 
   const binaryData = ctx.helpers.assertBinaryData(i, binaryPropertyName);
   const fileName = fileOriginalName || binaryData.fileName?.trim() || 'document.pdf';
-  const { signedUrl, signature } = await uploadBinaryToPingen(ctx, i, binaryPropertyName, apiUrl, headers);
+  const { signedUrl, signature } = await uploadBinaryToPingen(ctx, i, binaryPropertyName, apiUrl, credentialsType);
 
   const attributes: LetterAttributes = {
     file_original_name: fileName,
@@ -378,16 +379,16 @@ const uploadAndCreate: OperationHandler = async (ctx, i, orgId, headers, apiUrl)
   const presetId = (ctx.getNodeParameter('presetIdCreate', i, '') as string).trim();
   const preset: PresetRelationship | undefined = presetId ? { data: { id: presetId, type: 'presets' } } : undefined;
 
-  const createRaw = await pingenRequest(ctx, {
+  const createRaw = await pingenRequest(ctx, credentialsType, {
     method: 'POST',
     url: `${apiUrl}/organisations/${orgId}/deliveries/letters`,
-    headers,
+    headers: getPingenHeaders(),
     body: buildLetterPayload(attributes, preset),
   });
   return flattenJsonApi(createRaw);
 };
 
-const send: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
+const send: OperationHandler = async (ctx, i, orgId, credentialsType, apiUrl) => {
   const letterId = readEncodedIdParam(ctx, i, 'letterId', 'Letter ID');
   const deliveryProduct = ctx.getNodeParameter('deliveryProductSend', i) as DeliveryProduct;
   const { recipient, sender, hasRecipient, hasSender } = getAddressParts(
@@ -404,10 +405,10 @@ const send: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
         }
       : undefined;
 
-  const res = await pingenRequest(ctx, {
+  const res = await pingenRequest(ctx, credentialsType, {
     method: 'PATCH',
     url: `${apiUrl}/organisations/${orgId}/deliveries/letters/${letterId}/send`,
-    headers,
+    headers: getPingenHeaders(),
     body: buildSendPayload(
       letterId,
       deliveryProduct,
@@ -419,33 +420,33 @@ const send: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
   return flattenJsonApi(res);
 };
 
-const get: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
+const get: OperationHandler = async (ctx, i, orgId, credentialsType, apiUrl) => {
   const letterId = readEncodedIdParam(ctx, i, 'letterId', 'Letter ID');
-  const res = await pingenRequest(ctx, {
+  const res = await pingenRequest(ctx, credentialsType, {
     method: 'GET',
     url: `${apiUrl}/organisations/${orgId}/deliveries/letters/${letterId}`,
-    headers,
+    headers: getPingenHeaders(),
   });
   return flattenJsonApi(res);
 };
 
-const getAll: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
+const getAll: OperationHandler = async (ctx, i, orgId, credentialsType, apiUrl) => {
   const qs = buildQueryString(ctx, i);
-  const res = await pingenRequest(ctx, {
+  const res = await pingenRequest(ctx, credentialsType, {
     method: 'GET',
     url: `${apiUrl}/organisations/${orgId}/deliveries/letters${qs}`,
-    headers,
+    headers: getPingenHeaders(),
   });
   return flattenJsonApi(res);
 };
 
-const calculatePrice: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
+const calculatePrice: OperationHandler = async (ctx, i, orgId, credentialsType, apiUrl) => {
   const country = (ctx.getNodeParameter('country', i) as string).trim().toUpperCase();
   validateCountryCode(country, 'Country');
-  const res = await pingenRequest(ctx, {
+  const res = await pingenRequest(ctx, credentialsType, {
     method: 'POST',
     url: `${apiUrl}/organisations/${orgId}/deliveries/letters/price-calculator`,
-    headers,
+    headers: getPingenHeaders(),
     body: JSON.stringify({
       data: {
         type: 'letter_price_calculator',
@@ -462,12 +463,12 @@ const calculatePrice: OperationHandler = async (ctx, i, orgId, headers, apiUrl) 
   return flattenJsonApi(res);
 };
 
-const cancel: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
+const cancel: OperationHandler = async (ctx, i, orgId, credentialsType, apiUrl) => {
   const letterId = readEncodedIdParam(ctx, i, 'letterId', 'Letter ID');
-  const res = await pingenRequest(ctx, {
+  const res = await pingenRequest(ctx, credentialsType, {
     method: 'PATCH',
     url: `${apiUrl}/organisations/${orgId}/deliveries/letters/${letterId}/cancel`,
-    headers,
+    headers: getPingenHeaders(),
   });
   return flattenJsonApi(res);
 };

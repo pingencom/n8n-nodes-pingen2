@@ -1,7 +1,8 @@
-import type { IWebhookFunctions, IWebhookResponseData } from 'n8n-workflow';
+import type { IHookFunctions, ILoadOptionsFunctions, IWebhookFunctions, IWebhookResponseData } from 'n8n-workflow';
 import { createHmac } from 'node:crypto';
 import { PingenTrigger } from '../../../nodes/PingenTrigger/PingenTrigger.node';
 import { WEBHOOK_DELIVERED, WEBHOOK_ISSUES, WEBHOOK_SENT, WEBHOOK_UNDELIVERABLE } from '../../fixtures/webhookFixtures';
+import { createMockCtx } from '../../helpers/mockCtx';
 
 const SECRET = 'whsec_live_42';
 const sign = (body: string, secret = SECRET) => createHmac('sha256', secret).update(body).digest('hex');
@@ -177,5 +178,164 @@ describe('PingenTrigger.webhook() — protocol & security', () => {
       params: { webhookSecret: '' },
     });
     expect(result.webhookResponse).toMatchObject({ status: 401 });
+  });
+});
+
+const WEBHOOK_URL = 'https://n8n.example.com/webhook/abc/delivered';
+
+function mockHookCtx(
+  opts: {
+    params?: Record<string, unknown>;
+    staticData?: Record<string, unknown>;
+    responses?: unknown[];
+  } = {},
+) {
+  const staticData = opts.staticData ?? {};
+  const authMock = jest.fn();
+  (opts.responses ?? []).forEach((r) => {
+    if (r instanceof Error) {
+      authMock.mockRejectedValueOnce(r);
+    } else {
+      authMock.mockResolvedValueOnce(r);
+    }
+  });
+  const params = {
+    environment: 'production',
+    organisationId: 'org-1',
+    eventType: 'delivered',
+    webhookSecret: 'sec-123',
+    ...opts.params,
+  };
+  const ctx = {
+    getNodeParameter: jest.fn((name: string, fallback?: unknown) =>
+      name in params ? params[name as keyof typeof params] : fallback,
+    ),
+    getNodeWebhookUrl: jest.fn(() => WEBHOOK_URL),
+    getWorkflowStaticData: jest.fn(() => staticData),
+    helpers: { httpRequestWithAuthentication: authMock },
+  } as unknown as IHookFunctions;
+  return { ctx, staticData, authMock };
+}
+
+const hooks = new PingenTrigger().webhookMethods.default;
+
+describe('PingenTrigger.description — managed webhook wiring', () => {
+  const n = new PingenTrigger();
+
+  it('declares both production and staging OAuth2 credentials', () => {
+    const credNames = n.description.credentials?.map((c) => c.name);
+    expect(credNames).toEqual(expect.arrayContaining(['pingenOAuth2Api', 'pingenStagingOAuth2Api']));
+  });
+
+  it('exposes environment and organisation selectors', () => {
+    const names = n.description.properties.map((p) => p.name);
+    expect(names).toEqual(expect.arrayContaining(['environment', 'organisationId', 'eventType']));
+  });
+});
+
+describe('PingenTrigger.webhookMethods.checkExists', () => {
+  it('returns true and records the id when a matching webhook exists', async () => {
+    const { ctx, staticData, authMock } = mockHookCtx({
+      responses: [
+        {
+          data: [
+            { id: 'wh-other', attributes: { url: 'https://other', event_category: 'delivered' } },
+            { id: 'wh-1', attributes: { url: WEBHOOK_URL, event_category: 'delivered' } },
+          ],
+        },
+      ],
+    });
+    await expect(hooks.checkExists.call(ctx)).resolves.toBe(true);
+    expect(staticData.webhookId).toBe('wh-1');
+    expect(authMock.mock.calls[0][1]).toMatchObject({
+      method: 'GET',
+      url: expect.stringContaining('/organisations/org-1/webhooks'),
+    });
+  });
+
+  it('returns false when no webhook matches the URL + event category', async () => {
+    const { ctx, staticData } = mockHookCtx({
+      responses: [{ data: [{ id: 'wh-x', attributes: { url: WEBHOOK_URL, event_category: 'sent' } }] }],
+    });
+    await expect(hooks.checkExists.call(ctx)).resolves.toBe(false);
+    expect(staticData.webhookId).toBeUndefined();
+  });
+
+  it('handles an empty/absent webhook list', async () => {
+    const { ctx } = mockHookCtx({ responses: [{}] });
+    await expect(hooks.checkExists.call(ctx)).resolves.toBe(false);
+  });
+});
+
+describe('PingenTrigger.webhookMethods.create', () => {
+  it('registers the webhook and stores the returned id', async () => {
+    const { ctx, staticData, authMock } = mockHookCtx({ responses: [{ data: { id: 'wh-new' } }] });
+    await expect(hooks.create.call(ctx)).resolves.toBe(true);
+    expect(staticData.webhookId).toBe('wh-new');
+    const body = JSON.parse(authMock.mock.calls[0][1].body);
+    expect(body.data).toMatchObject({
+      type: 'webhooks',
+      attributes: { event_category: 'delivered', url: WEBHOOK_URL, signing_key: 'sec-123' },
+    });
+    expect(authMock.mock.calls[0][1].method).toBe('POST');
+  });
+
+  it('returns false when the API response has no id', async () => {
+    const { ctx, staticData } = mockHookCtx({ responses: [{ data: {} }] });
+    await expect(hooks.create.call(ctx)).resolves.toBe(false);
+    expect(staticData.webhookId).toBeUndefined();
+  });
+});
+
+describe('PingenTrigger.webhookMethods.delete', () => {
+  it('deletes the stored webhook and clears static data', async () => {
+    const { ctx, staticData, authMock } = mockHookCtx({ staticData: { webhookId: 'wh-1' }, responses: [{}] });
+    await expect(hooks.delete.call(ctx)).resolves.toBe(true);
+    expect(staticData.webhookId).toBeUndefined();
+    expect(authMock.mock.calls[0][1]).toMatchObject({
+      method: 'DELETE',
+      url: expect.stringContaining('/webhooks/wh-1'),
+    });
+  });
+
+  it('is a no-op when there is no stored webhook id', async () => {
+    const { ctx, authMock } = mockHookCtx({ staticData: {} });
+    await expect(hooks.delete.call(ctx)).resolves.toBe(true);
+    expect(authMock).not.toHaveBeenCalled();
+  });
+
+  it('treats a 404 as already-deleted', async () => {
+    const err = Object.assign(new Error('gone'), { response: { status: 404 } });
+    const { ctx, staticData } = mockHookCtx({ staticData: { webhookId: 'wh-1' }, responses: [err] });
+    await expect(hooks.delete.call(ctx)).resolves.toBe(true);
+    expect(staticData.webhookId).toBeUndefined();
+  });
+
+  it('rethrows non-404 errors', async () => {
+    const err = Object.assign(new Error('boom'), { response: { status: 500 } });
+    const { ctx } = mockHookCtx({ staticData: { webhookId: 'wh-1' }, responses: [err] });
+    await expect(hooks.delete.call(ctx)).rejects.toThrow(/boom/);
+  });
+});
+
+describe('PingenTrigger.loadOptions.getOrganisations', () => {
+  it('lists organisations via the shared loader', async () => {
+    const ctx = createMockCtx({
+      requests: [
+        {
+          data: [
+            {
+              id: 'org-a',
+              type: 'organisations',
+              attributes: { name: 'Acme', status: 'active', plan: 'pro', default_country: 'CH' },
+            },
+          ],
+        },
+      ],
+    });
+    const result = await new PingenTrigger().methods.loadOptions.getOrganisations.call(
+      ctx as unknown as ILoadOptionsFunctions,
+    );
+    expect(result).toEqual([{ name: 'Acme (CH)', value: 'org-a' }]);
   });
 });

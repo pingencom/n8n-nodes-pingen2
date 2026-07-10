@@ -8,7 +8,7 @@ import {
 
 const ORG = 'org-1';
 const API = 'https://api.pingen.com';
-const HEADERS = { Authorization: 'Bearer t' };
+const CRED = 'pingenOAuth2Api';
 
 describe('batchHandlers.uploadAndCreate', () => {
   const base = {
@@ -34,7 +34,7 @@ describe('batchHandlers.uploadAndCreate', () => {
         { data: { id: 'batch-1', type: 'batches', attributes: { status: 'created' } } },
       ],
     });
-    const result = (await batchHandlers.uploadAndCreate(ctx, 0, ORG, HEADERS, API)) as { id: string };
+    const result = (await batchHandlers.uploadAndCreate(ctx, 0, ORG, CRED, API)) as { id: string };
     expect(result.id).toBe('batch-1');
     const body = JSON.parse((ctx.helpers.httpRequest as jest.Mock).mock.calls[2][0].body);
     expect(body.data.attributes.grouping_options_split_size).toBe(2);
@@ -52,7 +52,7 @@ describe('batchHandlers.uploadAndCreate', () => {
       binary: {},
       requests: [mockFileUploadResponse(), '', mockJsonApiSingle('batch-1', 'batches', {})],
     });
-    await batchHandlers.uploadAndCreate(ctx, 0, ORG, HEADERS, API);
+    await batchHandlers.uploadAndCreate(ctx, 0, ORG, CRED, API);
     const putCall = (ctx.helpers.httpRequest as jest.Mock).mock.calls[1][0];
     expect(putCall.headers['Content-Type']).toBe('application/pdf');
   });
@@ -67,7 +67,7 @@ describe('batchHandlers.uploadAndCreate', () => {
       },
       requests: [mockFileUploadResponse(), ''],
     });
-    await expect(batchHandlers.uploadAndCreate(ctx, 0, ORG, HEADERS, API)).rejects.toThrow(
+    await expect(batchHandlers.uploadAndCreate(ctx, 0, ORG, CRED, API)).rejects.toThrow(
       /Split Size must be a positive integer/,
     );
   });
@@ -82,7 +82,7 @@ describe('batchHandlers.uploadAndCreate', () => {
       },
       requests: [mockFileUploadResponse(), '', mockJsonApiSingle('batch-1', 'batches', {})],
     });
-    await batchHandlers.uploadAndCreate(ctx, 0, ORG, HEADERS, API);
+    await batchHandlers.uploadAndCreate(ctx, 0, ORG, CRED, API);
     const body = JSON.parse((ctx.helpers.httpRequest as jest.Mock).mock.calls[2][0].body);
     expect(body.data.attributes.grouping_options_split_position).toBe('first_page');
   });
@@ -97,7 +97,7 @@ describe('batchHandlers.uploadAndCreate', () => {
       },
       requests: [mockFileUploadResponse(), '', mockJsonApiSingle('batch-1', 'batches', {})],
     });
-    await batchHandlers.uploadAndCreate(ctx, 0, ORG, HEADERS, API);
+    await batchHandlers.uploadAndCreate(ctx, 0, ORG, CRED, API);
     const body = JSON.parse((ctx.helpers.httpRequest as jest.Mock).mock.calls[2][0].body);
     expect(body.data.attributes.grouping_options_split_position).toBeUndefined();
   });
@@ -112,7 +112,7 @@ describe('batchHandlers.uploadAndCreate', () => {
       },
       requests: [mockFileUploadResponse(), '', mockJsonApiSingle('batch-1', 'batches', {})],
     });
-    await batchHandlers.uploadAndCreate(ctx, 0, ORG, HEADERS, API);
+    await batchHandlers.uploadAndCreate(ctx, 0, ORG, CRED, API);
     const body = JSON.parse((ctx.helpers.httpRequest as jest.Mock).mock.calls[2][0].body);
     expect(body.data.attributes.grouping_options_split_separator).toBe('---END---');
   });
@@ -127,9 +127,7 @@ describe('batchHandlers.uploadAndCreate', () => {
       },
       requests: [mockFileUploadResponse(), ''],
     });
-    await expect(batchHandlers.uploadAndCreate(ctx, 0, ORG, HEADERS, API)).rejects.toThrow(
-      /Split Separator is required/,
-    );
+    await expect(batchHandlers.uploadAndCreate(ctx, 0, ORG, CRED, API)).rejects.toThrow(/Split Separator is required/);
   });
 
   it('zip grouping forces split_type=file and skips merge branch', async () => {
@@ -137,7 +135,7 @@ describe('batchHandlers.uploadAndCreate', () => {
       params: { ...base, batchGroupingType: 'zip' },
       requests: [mockFileUploadResponse(), '', mockJsonApiSingle('batch-1', 'batches', {})],
     });
-    await batchHandlers.uploadAndCreate(ctx, 0, ORG, HEADERS, API);
+    await batchHandlers.uploadAndCreate(ctx, 0, ORG, CRED, API);
     const body = JSON.parse((ctx.helpers.httpRequest as jest.Mock).mock.calls[2][0].body);
     expect(body.data.attributes.grouping_options_split_type).toBe('file');
     expect(body.data.attributes.grouping_options_split_size).toBeUndefined();
@@ -154,7 +152,7 @@ describe('batchHandlers.uploadAndCreate', () => {
       },
       requests: [mockFileUploadResponse(), '', mockJsonApiSingle('batch-1', 'batches', {})],
     });
-    await batchHandlers.uploadAndCreate(ctx, 0, ORG, HEADERS, API);
+    await batchHandlers.uploadAndCreate(ctx, 0, ORG, CRED, API);
     const body = JSON.parse((ctx.helpers.httpRequest as jest.Mock).mock.calls[2][0].body);
     expect(body.data.relationships.preset.data.id).toBe('preset-1');
   });
@@ -171,7 +169,7 @@ describe('batchHandlers.send', () => {
       },
       requests: [mockJsonApiSingle('batch-1', 'batches', { status: 'sent' })],
     });
-    const result = (await batchHandlers.send(ctx, 0, ORG, HEADERS, API)) as { status: string };
+    const result = (await batchHandlers.send(ctx, 0, ORG, CRED, API)) as { status: string };
     expect(result.status).toBe('sent');
     const body = JSON.parse((ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0].body);
     expect(body.data.attributes.delivery_products).toEqual([{ country: 'CH', delivery_product: 'cheap' }]);
@@ -193,7 +191,7 @@ describe('batchHandlers.send', () => {
       },
       requests: [mockJsonApiSingle('batch-1', 'batches', {})],
     });
-    await batchHandlers.send(ctx, 0, ORG, HEADERS, API);
+    await batchHandlers.send(ctx, 0, ORG, CRED, API);
     const body = JSON.parse((ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0].body);
     expect(body.data.attributes.delivery_products).toHaveLength(1);
   });
@@ -208,7 +206,7 @@ describe('batchHandlers.send', () => {
       },
       requests: [mockJsonApiSingle('batch-1', 'batches', {})],
     });
-    await expect(batchHandlers.send(ctx, 0, ORG, HEADERS, API)).rejects.toThrow(/at least one delivery_product/);
+    await expect(batchHandlers.send(ctx, 0, ORG, CRED, API)).rejects.toThrow(/at least one delivery_product/);
   });
 });
 
@@ -218,7 +216,7 @@ describe('batchHandlers.get', () => {
       params: { batchId: 'batch-1' },
       requests: [mockJsonApiSingle('batch-1', 'batches', { name: 'x' })],
     });
-    const result = (await batchHandlers.get(ctx, 0, ORG, HEADERS, API)) as { id: string };
+    const result = (await batchHandlers.get(ctx, 0, ORG, CRED, API)) as { id: string };
     expect(result.id).toBe('batch-1');
   });
 });
@@ -229,7 +227,7 @@ describe('batchHandlers.getAll', () => {
       params: { pageNumber: 0 },
       requests: [mockJsonApiCollection([{ id: 'b1', type: 'batches', attributes: {} }])],
     });
-    await batchHandlers.getAll(ctx, 0, ORG, HEADERS, API);
+    await batchHandlers.getAll(ctx, 0, ORG, CRED, API);
     expect((ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0].url).not.toContain('?');
   });
 
@@ -238,7 +236,7 @@ describe('batchHandlers.getAll', () => {
       params: { filters: { filter: [{ key: 'name', value: 'Q4' }] } },
       requests: [mockJsonApiCollection([])],
     });
-    await batchHandlers.getAll(ctx, 0, ORG, HEADERS, API);
+    await batchHandlers.getAll(ctx, 0, ORG, CRED, API);
     expect((ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0].url).toContain('?filter[name]=Q4');
   });
 });
@@ -249,7 +247,7 @@ describe('batchHandlers.cancel', () => {
       params: { batchId: 'batch-1' },
       requests: [mockJsonApiSingle('batch-1', 'batches', { status: 'cancelled' })],
     });
-    await batchHandlers.cancel(ctx, 0, ORG, HEADERS, API);
+    await batchHandlers.cancel(ctx, 0, ORG, CRED, API);
     expect((ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0].method).toBe('PATCH');
   });
 });
@@ -260,7 +258,7 @@ describe('batchHandlers.delete', () => {
       params: { batchId: 'batch-1' },
       requests: [''],
     });
-    const result = (await batchHandlers['delete'](ctx, 0, ORG, HEADERS, API)) as {
+    const result = (await batchHandlers['delete'](ctx, 0, ORG, CRED, API)) as {
       deleted: boolean;
       batchId: string;
     };
@@ -273,7 +271,7 @@ describe('batchHandlers.delete', () => {
       params: { batchId: 'batch-1' },
       requests: [mockJsonApiSingle('batch-1', 'batches', { status: 'deleted' })],
     });
-    const result = (await batchHandlers['delete'](ctx, 0, ORG, HEADERS, API)) as { status: string };
+    const result = (await batchHandlers['delete'](ctx, 0, ORG, CRED, API)) as { status: string };
     expect(result.status).toBe('deleted');
   });
 });
@@ -284,7 +282,7 @@ describe('batchHandlers.getStatistics', () => {
       params: { batchId: 'batch-1' },
       requests: [mockJsonApiSingle('batch-1', 'batch_statistics', { total_letters: 10 })],
     });
-    const result = (await batchHandlers.getStatistics(ctx, 0, ORG, HEADERS, API)) as { total_letters: number };
+    const result = (await batchHandlers.getStatistics(ctx, 0, ORG, CRED, API)) as { total_letters: number };
     expect(result.total_letters).toBe(10);
   });
 });

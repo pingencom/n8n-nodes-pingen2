@@ -4,7 +4,7 @@ export type OperationHandler = (
   ctx: IExecuteFunctions,
   i: number,
   orgId: string,
-  headers: Record<string, string>,
+  credentialsType: string,
   apiUrl: string,
 ) => Promise<unknown>;
 

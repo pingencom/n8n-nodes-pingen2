@@ -42,6 +42,12 @@ export function createMockCtx(opts: MockCtxOptions = {}) {
     }),
     helpers: {
       httpRequest: requestMock,
+      // n8n's oAuth2Api credential injects the Bearer token here. Tests drive both authed and
+      // unauthenticated calls off the same `requests`/`requestImpl` queue, so forward to
+      // `requestMock` (dropping the credential-type arg) to preserve call order and responses.
+      httpRequestWithAuthentication: jest.fn((_credentialsType: string, options: Record<string, unknown>) =>
+        requestMock(options),
+      ),
       assertBinaryData: jest.fn(() => opts.binary ?? { mimeType: 'application/pdf', fileName: 'doc.pdf' }),
       getBinaryDataBuffer: jest.fn(() => Promise.resolve(opts.binaryBuffer ?? Buffer.from('pdf-bytes'))),
     },

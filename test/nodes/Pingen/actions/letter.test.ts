@@ -8,7 +8,7 @@ import {
 
 const ORG = 'org-1';
 const API = 'https://api.pingen.com';
-const HEADERS = { Authorization: 'Bearer t', Accept: 'application/vnd.api+json' };
+const CRED = 'pingenOAuth2Api';
 
 describe('letterHandlers.uploadAndCreate', () => {
   it('uploads file, creates letter without auto_send', async () => {
@@ -27,7 +27,7 @@ describe('letterHandlers.uploadAndCreate', () => {
       },
       requests: [mockFileUploadResponse(), '', mockJsonApiSingle('letter-1', 'letters', { status: 'valid' })],
     });
-    const result = (await letterHandlers.uploadAndCreate(ctx, 0, ORG, HEADERS, API)) as {
+    const result = (await letterHandlers.uploadAndCreate(ctx, 0, ORG, CRED, API)) as {
       id: string;
       status: string;
     };
@@ -57,7 +57,7 @@ describe('letterHandlers.uploadAndCreate', () => {
       binary,
       requests: [mockFileUploadResponse(), '', mockJsonApiSingle('letter-1', 'letters', {})],
     });
-    await letterHandlers.uploadAndCreate(ctx, 0, ORG, HEADERS, API);
+    await letterHandlers.uploadAndCreate(ctx, 0, ORG, CRED, API);
     const body = JSON.parse((ctx.helpers.httpRequest as jest.Mock).mock.calls[2][0].body);
     expect(body.data.attributes.file_original_name).toBe(expected);
   });
@@ -75,7 +75,7 @@ describe('letterHandlers.uploadAndCreate', () => {
       binary: {},
       requests: [mockFileUploadResponse(), '', mockJsonApiSingle('letter-1', 'letters', {})],
     });
-    await letterHandlers.uploadAndCreate(ctx, 0, ORG, HEADERS, API);
+    await letterHandlers.uploadAndCreate(ctx, 0, ORG, CRED, API);
     const putCall = (ctx.helpers.httpRequest as jest.Mock).mock.calls[1][0];
     expect(putCall.headers['Content-Type']).toBe('application/pdf');
   });
@@ -103,7 +103,7 @@ describe('letterHandlers.uploadAndCreate', () => {
       },
       requests: [mockFileUploadResponse(), ''],
     });
-    await expect(letterHandlers.uploadAndCreate(ctx, 0, ORG, HEADERS, API)).rejects.toThrow(pattern);
+    await expect(letterHandlers.uploadAndCreate(ctx, 0, ORG, CRED, API)).rejects.toThrow(pattern);
   });
 
   it('throws when registered auto_send without recipient', async () => {
@@ -121,7 +121,7 @@ describe('letterHandlers.uploadAndCreate', () => {
       },
       requests: [mockFileUploadResponse(), ''],
     });
-    await expect(letterHandlers.uploadAndCreate(ctx, 0, ORG, HEADERS, API)).rejects.toThrow(
+    await expect(letterHandlers.uploadAndCreate(ctx, 0, ORG, CRED, API)).rejects.toThrow(
       /Recipient address is required/,
     );
   });
@@ -142,7 +142,7 @@ describe('letterHandlers.uploadAndCreate', () => {
       },
       requests: [mockFileUploadResponse(), '', mockJsonApiSingle('letter-1', 'letters', { status: 'valid' })],
     });
-    await letterHandlers.uploadAndCreate(ctx, 0, ORG, HEADERS, API);
+    await letterHandlers.uploadAndCreate(ctx, 0, ORG, CRED, API);
     const body = JSON.parse((ctx.helpers.httpRequest as jest.Mock).mock.calls[2][0].body);
     expect(body.data.attributes.delivery_product).toBe('cheap');
     expect(body.data.attributes.meta_data).toBeUndefined();
@@ -171,7 +171,7 @@ describe('letterHandlers.uploadAndCreate', () => {
       },
       requests: [mockFileUploadResponse(), '', mockJsonApiSingle('letter-1', 'letters', {})],
     });
-    await letterHandlers.uploadAndCreate(ctx, 0, ORG, HEADERS, API);
+    await letterHandlers.uploadAndCreate(ctx, 0, ORG, CRED, API);
     const body = JSON.parse((ctx.helpers.httpRequest as jest.Mock).mock.calls[2][0].body);
     expect(body.data.attributes.meta_data?.recipient?.name).toBe(expected.recipient);
     expect(body.data.attributes.meta_data?.sender?.name).toBe(expected.sender);
@@ -191,7 +191,7 @@ describe('letterHandlers.send', () => {
       },
       requests: [mockJsonApiSingle('letter-1', 'letters', { status: 'sent' })],
     });
-    const result = (await letterHandlers.send(ctx, 0, ORG, HEADERS, API)) as { status: string };
+    const result = (await letterHandlers.send(ctx, 0, ORG, CRED, API)) as { status: string };
     expect(result.status).toBe('sent');
     const call = (ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0];
     expect(call.url).toContain('/letters/letter-1/send');
@@ -211,7 +211,7 @@ describe('letterHandlers.send', () => {
       },
       requests: [mockJsonApiSingle('letter-1', 'letters', { status: 'sent' })],
     });
-    await letterHandlers.send(ctx, 0, ORG, HEADERS, API);
+    await letterHandlers.send(ctx, 0, ORG, CRED, API);
     const body = JSON.parse((ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0].body);
     expect(body.data.attributes.meta_data.recipient.name).toBe('Jane');
   });
@@ -223,7 +223,7 @@ describe('letterHandlers.get', () => {
       params: { letterId: 'letter-1' },
       requests: [mockJsonApiSingle('letter-1', 'letters', { status: 'sent' })],
     });
-    const result = (await letterHandlers.get(ctx, 0, ORG, HEADERS, API)) as { id: string };
+    const result = (await letterHandlers.get(ctx, 0, ORG, CRED, API)) as { id: string };
     expect(result.id).toBe('letter-1');
   });
 });
@@ -234,7 +234,7 @@ describe('letterHandlers.getAll', () => {
       params: { pageNumber: 0 },
       requests: [mockJsonApiCollection([{ id: 'l1', type: 'letters', attributes: { status: 'valid' } }])],
     });
-    const result = (await letterHandlers.getAll(ctx, 0, ORG, HEADERS, API)) as {
+    const result = (await letterHandlers.getAll(ctx, 0, ORG, CRED, API)) as {
       items: Array<{ id: string }>;
       total: number;
     };
@@ -248,7 +248,7 @@ describe('letterHandlers.getAll', () => {
       params: { pageNumber: 2 },
       requests: [mockJsonApiCollection([])],
     });
-    await letterHandlers.getAll(ctx, 0, ORG, HEADERS, API);
+    await letterHandlers.getAll(ctx, 0, ORG, CRED, API);
     expect((ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0].url).toContain('?page[number]=2');
   });
 });
@@ -265,7 +265,7 @@ describe('letterHandlers.calculatePrice', () => {
       },
       requests: [mockJsonApiSingle('calc-1', 'letter_price_calculator', { price_currency: 'CHF' })],
     });
-    const result = (await letterHandlers.calculatePrice(ctx, 0, ORG, HEADERS, API)) as { price_currency: string };
+    const result = (await letterHandlers.calculatePrice(ctx, 0, ORG, CRED, API)) as { price_currency: string };
     expect(result.price_currency).toBe('CHF');
     const body = JSON.parse((ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0].body);
     expect(body.data.attributes.country).toBe('CH');
@@ -279,7 +279,7 @@ describe('letterHandlers.cancel', () => {
       params: { letterId: 'letter-1' },
       requests: [mockJsonApiSingle('letter-1', 'letters', { status: 'cancelled' })],
     });
-    const result = (await letterHandlers.cancel(ctx, 0, ORG, HEADERS, API)) as { status: string };
+    const result = (await letterHandlers.cancel(ctx, 0, ORG, CRED, API)) as { status: string };
     expect(result.status).toBe('cancelled');
     expect((ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0].method).toBe('PATCH');
   });

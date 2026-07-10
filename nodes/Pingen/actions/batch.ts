@@ -26,6 +26,7 @@ import { validateCountryCode } from '../../../utils/validation';
 import { readEncodedIdParam } from '../../../utils/params';
 import { createBatchDeliveryProduct, buildBatchPayload, buildBatchSendPayload } from '../../../utils/payloads';
 import { pingenRequest } from '../../../services/http.service';
+import { getPingenHeaders } from '../../../services/auth.service';
 import { flattenJsonApi } from '../../../utils/response';
 import { uploadBinaryToPingen } from '../../../services/upload.service';
 import { buildQueryString } from '../../../utils/query';
@@ -255,7 +256,7 @@ export const batchFields: INodeProperties[] = [
   },
 ];
 
-const uploadAndCreate: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
+const uploadAndCreate: OperationHandler = async (ctx, i, orgId, credentialsType, apiUrl) => {
   const binaryPropertyName = ctx.getNodeParameter('batchBinaryPropertyName', i) as string;
   const batchName = ctx.getNodeParameter('batchName', i) as string;
   const batchIcon = ctx.getNodeParameter('batchIcon', i) as BatchIcon;
@@ -266,7 +267,7 @@ const uploadAndCreate: OperationHandler = async (ctx, i, orgId, headers, apiUrl)
     groupingType === GroupingType.Zip ? SplitType.File : (ctx.getNodeParameter('batchSplitType', i) as SplitType);
   const presetId = ctx.getNodeParameter('batchPresetId', i, '') as string;
 
-  const { signedUrl, signature } = await uploadBinaryToPingen(ctx, i, binaryPropertyName, apiUrl, headers);
+  const { signedUrl, signature } = await uploadBinaryToPingen(ctx, i, binaryPropertyName, apiUrl, credentialsType);
 
   const batchAttributes: BatchAttributes = {
     file_url: signedUrl,
@@ -301,16 +302,16 @@ const uploadAndCreate: OperationHandler = async (ctx, i, orgId, headers, apiUrl)
 
   const preset: PresetRelationship | undefined = presetId ? { data: { id: presetId, type: 'presets' } } : undefined;
 
-  const createRaw = await pingenRequest(ctx, {
+  const createRaw = await pingenRequest(ctx, credentialsType, {
     method: 'POST',
     url: `${apiUrl}/organisations/${orgId}/batches`,
-    headers,
+    headers: getPingenHeaders(),
     body: buildBatchPayload(batchAttributes, preset),
   });
   return flattenJsonApi(createRaw);
 };
 
-const send: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
+const send: OperationHandler = async (ctx, i, orgId, credentialsType, apiUrl) => {
   const batchId = readEncodedIdParam(ctx, i, 'batchId', 'Batch ID');
   const deliveryProductsRaw = ctx.getNodeParameter('batchDeliveryProducts', i, {}) as {
     pair?: Array<{ country: string; deliveryProduct: DeliveryProduct }>;
@@ -323,10 +324,10 @@ const send: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
       return createBatchDeliveryProduct(country, p.deliveryProduct);
     });
 
-  const res = await pingenRequest(ctx, {
+  const res = await pingenRequest(ctx, credentialsType, {
     method: 'PATCH',
     url: `${apiUrl}/organisations/${orgId}/batches/${batchId}/send`,
-    headers,
+    headers: getPingenHeaders(),
     body: buildBatchSendPayload(batchId, {
       delivery_products: deliveryProducts,
       print_mode: ctx.getNodeParameter('batchPrintMode', i) as PrintMode,
@@ -336,52 +337,52 @@ const send: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
   return flattenJsonApi(res);
 };
 
-const get: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
+const get: OperationHandler = async (ctx, i, orgId, credentialsType, apiUrl) => {
   const batchId = readEncodedIdParam(ctx, i, 'batchId', 'Batch ID');
-  const res = await pingenRequest(ctx, {
+  const res = await pingenRequest(ctx, credentialsType, {
     method: 'GET',
     url: `${apiUrl}/organisations/${orgId}/batches/${batchId}`,
-    headers,
+    headers: getPingenHeaders(),
   });
   return flattenJsonApi(res);
 };
 
-const getAll: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
+const getAll: OperationHandler = async (ctx, i, orgId, credentialsType, apiUrl) => {
   const qs = buildQueryString(ctx, i);
-  const res = await pingenRequest(ctx, {
+  const res = await pingenRequest(ctx, credentialsType, {
     method: 'GET',
     url: `${apiUrl}/organisations/${orgId}/batches${qs}`,
-    headers,
+    headers: getPingenHeaders(),
   });
   return flattenJsonApi(res);
 };
 
-const cancel: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
+const cancel: OperationHandler = async (ctx, i, orgId, credentialsType, apiUrl) => {
   const batchId = readEncodedIdParam(ctx, i, 'batchId', 'Batch ID');
-  const res = await pingenRequest(ctx, {
+  const res = await pingenRequest(ctx, credentialsType, {
     method: 'PATCH',
     url: `${apiUrl}/organisations/${orgId}/batches/${batchId}/cancel`,
-    headers,
+    headers: getPingenHeaders(),
   });
   return flattenJsonApi(res);
 };
 
-const delete_: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
+const delete_: OperationHandler = async (ctx, i, orgId, credentialsType, apiUrl) => {
   const batchId = readEncodedIdParam(ctx, i, 'batchId', 'Batch ID');
-  const res = await pingenRequest(ctx, {
+  const res = await pingenRequest(ctx, credentialsType, {
     method: 'DELETE',
     url: `${apiUrl}/organisations/${orgId}/batches/${batchId}`,
-    headers,
+    headers: getPingenHeaders(),
   });
   return res ? flattenJsonApi(res) : { deleted: true, batchId };
 };
 
-const getStatistics: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
+const getStatistics: OperationHandler = async (ctx, i, orgId, credentialsType, apiUrl) => {
   const batchId = readEncodedIdParam(ctx, i, 'batchId', 'Batch ID');
-  const res = await pingenRequest(ctx, {
+  const res = await pingenRequest(ctx, credentialsType, {
     method: 'GET',
     url: `${apiUrl}/organisations/${orgId}/batches/${batchId}/statistics`,
-    headers,
+    headers: getPingenHeaders(),
   });
   return flattenJsonApi(res);
 };

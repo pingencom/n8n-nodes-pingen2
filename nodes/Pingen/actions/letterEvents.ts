@@ -1,6 +1,7 @@
 import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 
 import { pingenRequest } from '../../../services/http.service';
+import { getPingenHeaders } from '../../../services/auth.service';
 import { flattenJsonApi } from '../../../utils/response';
 import { readEncodedIdParam } from '../../../utils/params';
 import { buildQueryString } from '../../../utils/query';
@@ -52,24 +53,24 @@ export const letterEventFields: INodeProperties[] = [
   },
 ];
 
-const getAllForLetter: OperationHandler = async (ctx, i, orgId, headers, apiUrl) => {
+const getAllForLetter: OperationHandler = async (ctx, i, orgId, credentialsType, apiUrl) => {
   const letterId = readEncodedIdParam(ctx, i, 'eventLetterId', 'Letter ID');
   const qs = buildQueryString(ctx, i);
-  const res = await pingenRequest(ctx, {
+  const res = await pingenRequest(ctx, credentialsType, {
     method: 'GET',
     url: `${apiUrl}/organisations/${orgId}/deliveries/letters/${letterId}/events${qs}`,
-    headers,
+    headers: getPingenHeaders(),
   });
   return flattenJsonApi(res);
 };
 
 const eventCollectionHandler = (path: string): OperationHandler => {
-  return async (ctx, i, orgId, headers, apiUrl) => {
+  return async (ctx, i, orgId, credentialsType, apiUrl) => {
     const qs = buildQueryString(ctx, i);
-    const res = await pingenRequest(ctx, {
+    const res = await pingenRequest(ctx, credentialsType, {
       method: 'GET',
       url: `${apiUrl}/organisations/${orgId}/deliveries/letters/events/${path}${qs}`,
-      headers,
+      headers: getPingenHeaders(),
     });
     return flattenJsonApi(res);
   };
