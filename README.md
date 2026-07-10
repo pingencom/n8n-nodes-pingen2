@@ -31,10 +31,10 @@ The node requests all scopes it needs (`letter batch organisation_read webhook`)
 
 In n8n: **Credentials → New →** pick either:
 
-- **Pingen API** (for production)
-- **Pingen Staging API** (for testing — no real letters sent, no credits consumed)
+- **Pingen OAuth2 API** (for production)
+- **Pingen Staging OAuth2 API** (for testing — no real letters sent, no credits consumed)
 
-Paste Client ID + Secret and save. The node automatically exchanges them for an access token on first use and caches until expiry.
+Paste Client ID + Secret and save. These credentials extend n8n's built-in OAuth2 (client-credentials grant), so n8n obtains and refreshes the access token for you.
 
 ### 3. Use the Pingen node
 
@@ -47,10 +47,10 @@ Pingen provides a free staging environment for development. Letters sent against
 **Setup is separate from production:**
 
 1. Create a second app at [identity-staging.pingen.com](https://identity-staging.pingen.com)
-2. In n8n, create a second credential using **Pingen Staging API** (not Pingen API) — staging and production client IDs/secrets are not interchangeable
+2. In n8n, create a second credential using **Pingen Staging OAuth2 API** (not Pingen OAuth2 API) — staging and production client IDs/secrets are not interchangeable
 3. In the Pingen node, set **Environment → Staging** — the node switches to `api-staging.pingen.com` and uses the staging credential automatically
 
-Switch back to **Environment → Production** when going live. Token caches are isolated per environment, so no cross-contamination.
+Switch back to **Environment → Production** when going live. Each environment uses its own credential, so there is no cross-contamination.
 
 ## Example use cases
 
@@ -139,9 +139,11 @@ Use the **Pingen Trigger** node to start a workflow when Pingen pushes an event.
 
 One Pingen Trigger node = one event type = one URL. This keeps each branch of your workflow focused on a single concern (single-responsibility) and surfaces which events you're subscribed to directly in the canvas.
 
-1. Drag a **Pingen Trigger** onto the canvas. Pick an **Event Type** (Issues / Sent / Delivered / Undeliverable). The Webhook URL above updates automatically — the path ends in `/issues`, `/sent`, `/delivered` or `/undeliverable` so the URL is self-documenting.
-2. Generate a strong random string and paste it into **Webhook Secret** (e.g. `openssl rand -hex 32`).
-3. In **Pingen → Settings → Webhooks**, paste the URL into the matching event-type slot and paste the same secret next to it.
+The trigger **registers and removes the webhook in Pingen for you** — when you activate the workflow n8n creates the subscription in your organisation, and when you deactivate it n8n deletes it. No manual setup in the Pingen panel.
+
+1. Drag a **Pingen Trigger** onto the canvas. Pick **Environment** and **Organisation** (same as the action node), then an **Event Type** (Issues / Sent / Delivered / Undeliverable). The Webhook URL's path ends in `/issues`, `/sent`, `/delivered` or `/undeliverable` so it is self-documenting.
+2. Generate a strong random string (max 32 chars) and paste it into **Webhook Secret** (e.g. `openssl rand -hex 16`). It is registered as the webhook's signing key and used to verify the HMAC-SHA256 signature on every incoming request.
+3. **Activate the workflow.** n8n registers the webhook in Pingen automatically — nothing to paste in the Pingen panel. (During editing, use **"Listen for test event"** + the Test URL as usual.)
 4. Need more event types? Add another Pingen Trigger and repeat — one per event type you care about.
 
 ### Test URL vs Production URL (how n8n webhooks work)
@@ -153,7 +155,7 @@ The trigger node shows **two URLs**:
 | **Test URL** | Only while you're in the editor and clicked **"Listen for test event"** | 2 minutes or first event | Development / fast iteration. Pingen's **"Send test webhook"** button can target this while the listener is armed. |
 | **Production URL** | Only while the workflow is **active** (toggle top-right) | Never — as long as the workflow stays active | Production — real delivery events. Also works with Pingen's "Send test webhook" if you want to smoke-test a live deployment. |
 
-**This is an n8n platform constraint — not something this node can change.** Day-to-day testing uses the Test URL + "Listen for test event". Once you're happy, swap in the Production URL in Pingen and activate the workflow.
+**This is an n8n platform constraint — not something this node can change.** Day-to-day testing uses the Test URL + "Listen for test event". Once you're happy, just **activate the workflow** — n8n registers the Production URL in Pingen for you.
 
 ### Output shape
 

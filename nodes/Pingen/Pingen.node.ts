@@ -6,13 +6,14 @@ import {
   INodePropertyOptions,
   INodeType,
   INodeTypeDescription,
+  NodeApiError,
   NodeOperationError,
 } from 'n8n-workflow';
-import type { INodeProperties } from 'n8n-workflow';
-import { USER_AGENT } from '../../utils/constants';
-import { getPingenConfig, getPingenHeaders } from '../../services/auth.service';
+import type { INodeProperties, JsonObject } from 'n8n-workflow';
+import { getApiUrl, normalizeEnvironment } from '../../utils/constants';
+import { credentialNameForEnvironment } from '../../services/auth.service';
+import { loadOrganisationOptions } from '../../services/organisations.service';
 import { extractErrorMessage } from '../../errors';
-import { safeParseJson } from '../../utils/response';
 import type { OperationHandler } from '../../types';
 
 import { letterOperations, letterFields, letterHandlers } from './actions/letter';
@@ -97,12 +98,12 @@ export class Pingen implements INodeType {
     outputs: ['main'],
     credentials: [
       {
-        name: 'pingenApi',
+        name: 'pingenOAuth2Api',
         required: true,
         displayOptions: { show: { environment: ['production'] } },
       },
       {
-        name: 'pingenStagingApi',
+        name: 'pingenStagingOAuth2Api',
         required: true,
         displayOptions: { show: { environment: ['staging'] } },
       },
@@ -182,29 +183,7 @@ export class Pingen implements INodeType {
   methods = {
     loadOptions: {
       async getOrganisations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-        const environment = (this.getCurrentNodeParameter('environment') as string | undefined) ?? 'production';
-        const config = await getPingenConfig(this, environment);
-        const res = await this.helpers.httpRequest({
-          method: 'GET',
-          url: `${config.apiUrl}/organisations`,
-          headers: {
-            Authorization: `Bearer ${config.token}`,
-            Accept: 'application/vnd.api+json',
-            'User-Agent': USER_AGENT,
-          },
-        });
-        const parsed = safeParseJson<{
-          data: Array<{
-            id: string;
-            type: string;
-            attributes: { name: string; status: string; plan: string; default_country: string };
-          }>;
-        }>(res, 'organisations');
-        return parsed.data.map((org) => {
-          const { name, default_country, status } = org.attributes;
-          const suffix = status === 'active' ? '' : ` [${status}]`;
-          return { name: `${name} (${default_country})${suffix}`, value: org.id };
-        });
+        return loadOrganisationOptions(this);
       },
     },
   };
@@ -228,19 +207,32 @@ export class Pingen implements INodeType {
           throw new NodeOperationError(this.getNode(), `Unknown operation: ${resource}.${operation}`, { itemIndex: i });
         }
         const orgId = encodeURIComponent(this.getNodeParameter('organisationId', i) as string);
-        const environment = this.getNodeParameter('environment', i) as string;
-        const { token, apiUrl } = await getPingenConfig(this, environment);
-        const headers = getPingenHeaders(token);
-        const responseData = await handler(this, i, orgId, headers, apiUrl);
+        const env = normalizeEnvironment(this.getNodeParameter('environment', i, 'production') as string);
+        const apiUrl = getApiUrl(env);
+        const credentialsType = credentialNameForEnvironment(env);
+        const responseData = await handler(this, i, orgId, credentialsType, apiUrl);
         results.push({ json: responseData as IDataObject, pairedItem: { item: i } });
       } catch (error) {
-        const message = extractErrorMessage(error);
-        const statusCode = (error as { response?: { status?: number } }).response?.status;
         if (this.continueOnFail()) {
+          const message = extractErrorMessage(error);
+          const statusCode = (error as { response?: { status?: number } }).response?.status;
           results.push({ json: { error: message, statusCode }, pairedItem: { item: i } });
           continue;
         }
-        throw new NodeOperationError(this.getNode(), message, { itemIndex: i });
+        if (error instanceof NodeOperationError || error instanceof NodeApiError) {
+          throw error;
+        }
+        // HTTP failures carry a `.response` (non-2xx) or a transport `.code` (e.g. ECONNRESET);
+        // wrap those in NodeApiError so the n8n UI keeps the full response context. Everything
+        // else is a user-input/validation error thrown by the handlers — surface it as a
+        // NodeOperationError, since NodeApiError would mislabel it as a service fault.
+        const isHttpError =
+          (error as { response?: unknown }).response !== undefined ||
+          typeof (error as { code?: unknown }).code === 'string';
+        if (isHttpError) {
+          throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex: i });
+        }
+        throw new NodeOperationError(this.getNode(), error as Error, { itemIndex: i });
       }
     }
 

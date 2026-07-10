@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-pingen2",
-  "version": "0.0.0-development",
+  "version": "0.2.2",
   "description": "Send physical mail with Pingen directly from n8n. One-click postal dispatch for invoices, reminders, contracts, and any PDF.",
   "keywords": [
     "n8n-community-node-package",
@@ -54,8 +54,8 @@
   "n8n": {
     "n8nNodesApiVersion": 1,
     "credentials": [
-      "dist/credentials/PingenApi.credentials.js",
-      "dist/credentials/PingenStagingApi.credentials.js"
+      "dist/credentials/PingenOAuth2Api.credentials.js",
+      "dist/credentials/PingenStagingOAuth2Api.credentials.js"
     ],
     "nodes": [
       "dist/nodes/Pingen/Pingen.node.js",

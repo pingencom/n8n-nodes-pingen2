@@ -1,15 +1,9 @@
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { Pingen } from '../../../nodes/Pingen/Pingen.node';
-import { clearTokenCache } from '../../../services/auth.service';
 import { createMockCtx, mockJsonApiSingle } from '../../helpers/mockCtx';
 
 const node = new Pingen();
-
-beforeEach(() => {
-  clearTokenCache();
-});
-
-const tokenResponse = { access_token: 'tok-xyz', expires_in: 3600 };
 
 const mockExecuteCtx = (overrides: Parameters<typeof createMockCtx>[0] = {}) =>
   createMockCtx({
@@ -39,8 +33,8 @@ describe('Pingen.execute() dispatch', () => {
     ],
   ] as const)('routes %s through the registry', async (_label, params, response, expected) => {
     const ctx = mockExecuteCtx({
-      params: { organisationId: 'org-1', ...params },
-      requests: [tokenResponse, response],
+      params: { organisationId: 'org-1', environment: 'production', ...params },
+      requests: [response],
     });
     const result = await node.execute.call(ctx);
     expect(result[0]).toHaveLength(1);
@@ -50,15 +44,20 @@ describe('Pingen.execute() dispatch', () => {
   it('throws NodeOperationError for unknown operation', async () => {
     const ctx = mockExecuteCtx({
       params: { organisationId: 'org-1', resource: 'letter', operation: 'xxxUnknown' },
-      requests: [tokenResponse],
+      requests: [],
     });
     await expect(node.execute.call(ctx)).rejects.toThrow(/Unknown operation/);
   });
 
   describe('continueOnFail error extraction', () => {
-    const errParams = { organisationId: 'org-1', resource: 'letter', operation: 'get', letterId: 'l1' };
-    const buildCtx = (error: unknown) =>
-      mockExecuteCtx({ params: errParams, requests: [tokenResponse, error], continueOnFail: true });
+    const errParams = {
+      organisationId: 'org-1',
+      environment: 'production',
+      resource: 'letter',
+      operation: 'get',
+      letterId: 'l1',
+    };
+    const buildCtx = (error: unknown) => mockExecuteCtx({ params: errParams, requests: [error], continueOnFail: true });
 
     it.each([
       [
@@ -108,6 +107,11 @@ describe('Pingen.execute() dispatch', () => {
         { error: 'real' },
       ],
       [
+        'bare error with no response body falls back to err.message',
+        new Error('bare network error'),
+        { error: 'bare network error' },
+      ],
+      [
         'ignores errors field when not an array',
         Object.assign(new Error('orig'), { response: { data: '{"errors":"not-an-array"}' } }),
         { error: 'orig' },
@@ -126,45 +130,52 @@ describe('Pingen.execute() dispatch', () => {
     });
   });
 
-  it('wraps error in NodeOperationError when not continueOnFail', async () => {
+  it('wraps API errors in NodeApiError when not continueOnFail', async () => {
     const ctx = mockExecuteCtx({
-      params: { organisationId: 'org-1', resource: 'letter', operation: 'get', letterId: 'l1' },
-      requests: [tokenResponse, new Error('boom')],
+      params: {
+        organisationId: 'org-1',
+        environment: 'production',
+        resource: 'letter',
+        operation: 'get',
+        letterId: 'l1',
+      },
+      requests: [Object.assign(new Error('boom'), { response: { status: 400 } })],
       continueOnFail: false,
     });
-    await expect(node.execute.call(ctx)).rejects.toThrow(/boom/);
+    await expect(node.execute.call(ctx)).rejects.toBeInstanceOf(NodeApiError);
+  });
+
+  it('wraps validation errors in NodeOperationError when not continueOnFail', async () => {
+    const ctx = mockExecuteCtx({
+      params: {
+        organisationId: 'org-1',
+        environment: 'production',
+        resource: 'letter',
+        operation: 'calculatePrice',
+        country: 'X',
+        deliveryProductPrice: 'cheap',
+        printModePrice: 'simplex',
+        printSpectrumPrice: 'grayscale',
+        paperTypesPrice: ['normal'],
+      },
+      requests: [],
+      continueOnFail: false,
+    });
+    await expect(node.execute.call(ctx)).rejects.toBeInstanceOf(NodeOperationError);
   });
 });
 
 describe('Pingen.loadOptions.getOrganisations', () => {
   const loadOptions = node.methods.loadOptions.getOrganisations;
 
-  it('throws when credentials are missing', async () => {
-    const ctx = createMockCtx({ credentials: { clientId: '', clientSecret: '' } });
-    await expect(loadOptions.call(ctx as unknown as ILoadOptionsFunctions)).rejects.toThrow(/credentials are missing/i);
-  });
-
-  it('throws when token endpoint fails', async () => {
-    const ctx = createMockCtx({
-      credentials: { clientId: 'c', clientSecret: 's' },
-      requests: [new Error('bad creds')],
-    });
-    await expect(loadOptions.call(ctx as unknown as ILoadOptionsFunctions)).rejects.toThrow(/bad creds/);
-  });
-
   it('throws when orgs endpoint fails', async () => {
-    const ctx = createMockCtx({
-      credentials: { clientId: 'c', clientSecret: 's' },
-      requests: [{ access_token: 'tok', expires_in: 3600 }, new Error('forbidden')],
-    });
+    const ctx = createMockCtx({ requests: [new Error('forbidden')] });
     await expect(loadOptions.call(ctx as unknown as ILoadOptionsFunctions)).rejects.toThrow(/forbidden/);
   });
 
   it('returns every organisation, flagging non-active status in the label', async () => {
     const ctx = createMockCtx({
-      credentials: { clientId: 'c', clientSecret: 's' },
       requests: [
-        { access_token: 'tok', expires_in: 3600 },
         {
           data: [
             {
@@ -198,16 +209,15 @@ describe('Pingen node description', () => {
     expect(n.description.displayName).toBe('Pingen');
   });
 
-  it('declares both production and staging credentials (conditional on environment)', () => {
+  it('declares both production and staging OAuth2 credentials (conditional on environment)', () => {
     const credNames = n.description.credentials?.map((c) => c.name);
-    expect(credNames).toEqual(expect.arrayContaining(['pingenApi', 'pingenStagingApi']));
+    expect(credNames).toEqual(expect.arrayContaining(['pingenOAuth2Api', 'pingenStagingOAuth2Api']));
     expect(credNames).toHaveLength(2);
   });
 
-  it('has an Environment switch as first property', () => {
-    const first = n.description.properties[0]!;
-    expect(first.name).toBe('environment');
-    const opts = (first as { options: Array<{ value: string }> }).options;
+  it('has an Environment switch', () => {
+    const env = n.description.properties.find((p) => p.name === 'environment');
+    const opts = (env as { options: Array<{ value: string }> }).options;
     expect(opts.map((o) => o.value)).toEqual(['production', 'staging']);
   });
 

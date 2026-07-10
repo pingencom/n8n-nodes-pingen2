@@ -3,7 +3,7 @@ import { createMockCtx, mockJsonApiCollection } from '../../../helpers/mockCtx';
 
 const ORG = 'org-1';
 const API = 'https://api.pingen.com';
-const HEADERS = { Authorization: 'Bearer t' };
+const CRED = 'pingenOAuth2Api';
 
 describe('letterEventHandlers.getAllForLetter', () => {
   it('fetches events for a letter without query', async () => {
@@ -11,7 +11,7 @@ describe('letterEventHandlers.getAllForLetter', () => {
       params: { eventLetterId: 'letter-1', pageNumber: 0 },
       requests: [mockJsonApiCollection([{ id: 'e1', type: 'events', attributes: { type: 'sent' } }])],
     });
-    const result = (await letterEventHandlers.getAllForLetter(ctx, 0, ORG, HEADERS, API)) as {
+    const result = (await letterEventHandlers.getAllForLetter(ctx, 0, ORG, CRED, API)) as {
       items: unknown[];
     };
     expect(result.items).toHaveLength(1);
@@ -25,7 +25,7 @@ describe('letterEventHandlers.getAllForLetter', () => {
       params: { eventLetterId: 'letter-1', pageSize: 50 },
       requests: [mockJsonApiCollection([])],
     });
-    await letterEventHandlers.getAllForLetter(ctx, 0, ORG, HEADERS, API);
+    await letterEventHandlers.getAllForLetter(ctx, 0, ORG, CRED, API);
     expect((ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0].url).toContain('?page[limit]=50');
   });
 });
@@ -43,7 +43,7 @@ describe.each([
       params: { pageNumber: 0 },
       requests: [mockJsonApiCollection([])],
     });
-    await handler(ctx, 0, ORG, HEADERS, API);
+    await handler(ctx, 0, ORG, CRED, API);
     expect((ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0].url).toContain(`/events/${path}`);
   });
 
@@ -52,7 +52,7 @@ describe.each([
       params: { pageNumber: 3 },
       requests: [mockJsonApiCollection([])],
     });
-    await handler(ctx, 0, ORG, HEADERS, API);
+    await handler(ctx, 0, ORG, CRED, API);
     expect((ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0].url).toContain(`/events/${path}?page[number]=3`);
   });
 });
