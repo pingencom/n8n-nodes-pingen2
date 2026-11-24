@@ -112,6 +112,11 @@ describe('Pingen.execute() dispatch', () => {
         { error: 'bare network error' },
       ],
       [
+        'keeps err.message when body is neither JSON text nor an object',
+        Object.assign(new Error('orig'), { response: { data: 42 } }),
+        { error: 'orig' },
+      ],
+      [
         'ignores errors field when not an array',
         Object.assign(new Error('orig'), { response: { data: '{"errors":"not-an-array"}' } }),
         { error: 'orig' },

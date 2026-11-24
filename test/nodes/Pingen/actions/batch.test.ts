@@ -148,6 +148,19 @@ describe('batchHandlers.uploadAndCreate', () => {
     await expect(batchHandlers.uploadAndCreate(ctx, 0, ORG, CRED, API)).rejects.toThrow(/Split Separator is required/);
   });
 
+  it('merge with file split sends no split options', async () => {
+    const ctx = createMockCtx({
+      params: { ...base, batchGroupingType: 'merge', batchSplitType: 'file' },
+      requests: [mockFileUploadResponse(), '', mockJsonApiSingle('batch-1', 'batches', {})],
+    });
+    await batchHandlers.uploadAndCreate(ctx, 0, ORG, CRED, API);
+    const attrs = JSON.parse((ctx.helpers.httpRequest as jest.Mock).mock.calls[2][0].body).data.attributes;
+    expect(attrs.grouping_options_split_type).toBe('file');
+    expect(attrs.grouping_options_split_size).toBeUndefined();
+    expect(attrs.grouping_options_split_separator).toBeUndefined();
+    expect(attrs.grouping_options_split_position).toBeUndefined();
+  });
+
   it('zip grouping forces split_type=file and skips merge branch', async () => {
     const ctx = createMockCtx({
       params: { ...base, batchGroupingType: 'zip' },
