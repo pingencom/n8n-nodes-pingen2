@@ -33,7 +33,7 @@
   },
   "main": "dist/nodes/Pingen/Pingen.node.js",
   "engines": {
-    "node": ">=20.15.0"
+    "node": ">=20.19.0"
   },
   "scripts": {
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
