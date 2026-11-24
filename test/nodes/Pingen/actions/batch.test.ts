@@ -87,34 +87,52 @@ describe('batchHandlers.uploadAndCreate', () => {
     expect(body.data.attributes.grouping_options_split_position).toBe('first_page');
   });
 
-  it('skips split_position when empty', async () => {
+  it('defaults split_position to first_page for qr_invoice', async () => {
     const ctx = createMockCtx({
-      params: {
-        ...base,
-        batchGroupingType: 'merge',
-        batchSplitType: 'qr_invoice',
-        batchSplitPosition: '',
-      },
+      params: { ...base, batchGroupingType: 'merge', batchSplitType: 'qr_invoice' },
       requests: [mockFileUploadResponse(), '', mockJsonApiSingle('batch-1', 'batches', {})],
     });
     await batchHandlers.uploadAndCreate(ctx, 0, ORG, CRED, API);
     const body = JSON.parse((ctx.helpers.httpRequest as jest.Mock).mock.calls[2][0].body);
-    expect(body.data.attributes.grouping_options_split_position).toBeUndefined();
+    expect(body.data.attributes.grouping_options_split_position).toBe('first_page');
   });
 
-  it('adds split_separator for custom', async () => {
+  it('adds split_separator and split_position for custom', async () => {
     const ctx = createMockCtx({
       params: {
         ...base,
         batchGroupingType: 'merge',
         batchSplitType: 'custom',
         batchSplitSeparator: '---END---',
+        batchCustomSplitPosition: 'first_page',
       },
       requests: [mockFileUploadResponse(), '', mockJsonApiSingle('batch-1', 'batches', {})],
     });
     await batchHandlers.uploadAndCreate(ctx, 0, ORG, CRED, API);
     const body = JSON.parse((ctx.helpers.httpRequest as jest.Mock).mock.calls[2][0].body);
     expect(body.data.attributes.grouping_options_split_separator).toBe('---END---');
+    expect(body.data.attributes.grouping_options_split_position).toBe('first_page');
+  });
+
+  it('defaults split_position to last_page for custom', async () => {
+    const ctx = createMockCtx({
+      params: { ...base, batchGroupingType: 'merge', batchSplitType: 'custom', batchSplitSeparator: '---END---' },
+      requests: [mockFileUploadResponse(), '', mockJsonApiSingle('batch-1', 'batches', {})],
+    });
+    await batchHandlers.uploadAndCreate(ctx, 0, ORG, CRED, API);
+    const body = JSON.parse((ctx.helpers.httpRequest as jest.Mock).mock.calls[2][0].body);
+    expect(body.data.attributes.grouping_options_split_position).toBe('last_page');
+  });
+
+  it('does not send split_position for page split', async () => {
+    const ctx = createMockCtx({
+      params: { ...base, batchGroupingType: 'merge', batchSplitType: 'page', batchSplitSize: 1 },
+      requests: [mockFileUploadResponse(), '', mockJsonApiSingle('batch-1', 'batches', {})],
+    });
+    await batchHandlers.uploadAndCreate(ctx, 0, ORG, CRED, API);
+    const body = JSON.parse((ctx.helpers.httpRequest as jest.Mock).mock.calls[2][0].body);
+    expect(body.data.attributes.grouping_options_split_position).toBeUndefined();
+    expect(body.data.attributes.channel_type).toBe('post');
   });
 
   it('throws when split_separator empty for custom split type', async () => {
@@ -273,6 +291,23 @@ describe('batchHandlers.delete', () => {
     });
     const result = (await batchHandlers['delete'](ctx, 0, ORG, CRED, API)) as { status: string };
     expect(result.status).toBe('deleted');
+  });
+
+  it('sends with_deliverables=false by default', async () => {
+    const ctx = createMockCtx({ params: { batchId: 'batch-1' }, requests: [''] });
+    await batchHandlers['delete'](ctx, 0, ORG, CRED, API);
+    const body = JSON.parse((ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0].body);
+    expect(body).toEqual({ data: { id: 'batch-1', type: 'batches', attributes: { with_deliverables: false } } });
+  });
+
+  it('sends with_deliverables=true when enabled', async () => {
+    const ctx = createMockCtx({
+      params: { batchId: 'batch-1', batchDeleteDeliverables: true },
+      requests: [''],
+    });
+    await batchHandlers['delete'](ctx, 0, ORG, CRED, API);
+    const body = JSON.parse((ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0].body);
+    expect(body.data.attributes).toEqual({ with_deliverables: true });
   });
 });
 

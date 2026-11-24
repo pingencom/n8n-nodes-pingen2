@@ -17,12 +17,12 @@ export async function loadOrganisationOptions(ctx: ILoadOptionsFunctions): Promi
     data: Array<{
       id: string;
       type: string;
-      attributes: { name: string; status: string; plan: string; default_country: string };
+      attributes: { name: string; status: string; plan: string };
     }>;
   }>(res, 'organisations');
   return parsed.data.map((org) => {
-    const { name, default_country, status } = org.attributes;
+    const { name, status } = org.attributes;
     const suffix = status === 'active' ? '' : ` [${status}]`;
-    return { name: `${name} (${default_country})${suffix}`, value: org.id };
+    return { name: `${name}${suffix}`, value: org.id };
   });
 }

@@ -125,6 +125,7 @@ export interface BatchAttributes {
   grouping_options_split_size?: number;
   grouping_options_split_separator?: string;
   grouping_options_split_position?: SplitPosition;
+  channel_type: 'post';
 }
 
 export interface BatchSendAttributes {

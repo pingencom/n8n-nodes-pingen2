@@ -181,12 +181,12 @@ describe('Pingen.loadOptions.getOrganisations', () => {
             {
               id: 'org-a',
               type: 'organisations',
-              attributes: { name: 'Acme', status: 'active', plan: 'pro', default_country: 'CH' },
+              attributes: { name: 'Acme', status: 'active', plan: 'pro' },
             },
             {
               id: 'org-b',
               type: 'organisations',
-              attributes: { name: 'Inactive Co', status: 'inactive', plan: 'free', default_country: 'DE' },
+              attributes: { name: 'Inactive Co', status: 'inactive', plan: 'free' },
             },
           ],
         },
@@ -194,8 +194,8 @@ describe('Pingen.loadOptions.getOrganisations', () => {
     });
     const result = await loadOptions.call(ctx as unknown as ILoadOptionsFunctions);
     expect(result).toEqual([
-      { name: 'Acme (CH)', value: 'org-a' },
-      { name: 'Inactive Co (DE) [inactive]', value: 'org-b' },
+      { name: 'Acme', value: 'org-a' },
+      { name: 'Inactive Co [inactive]', value: 'org-b' },
     ]);
   });
 });
