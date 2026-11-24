@@ -24,7 +24,12 @@ import {
 } from '../../../utils/options';
 import { validateCountryCode } from '../../../utils/validation';
 import { readEncodedIdParam } from '../../../utils/params';
-import { createBatchDeliveryProduct, buildBatchPayload, buildBatchSendPayload } from '../../../utils/payloads';
+import {
+  createBatchDeliveryProduct,
+  buildBatchPayload,
+  buildBatchSendPayload,
+  buildBatchDeletePayload,
+} from '../../../utils/payloads';
 import { pingenRequest } from '../../../services/http.service';
 import { getPingenHeaders } from '../../../services/auth.service';
 import { flattenJsonApi } from '../../../utils/response';
@@ -81,6 +86,15 @@ export const batchFields: INodeProperties[] = [
         operation: ['send', 'get', 'cancel', 'delete', 'getStatistics'],
       },
     },
+  },
+  {
+    displayName: 'Delete Deliverables',
+    name: 'batchDeleteDeliverables',
+    type: 'boolean',
+    default: false,
+    description:
+      'Whether to also delete all deliverables (letters / e-bills / emails) contained in the batch. When off, they are kept and detached from the batch.',
+    displayOptions: { show: { resource: ['batch'], operation: ['delete'] } },
   },
   {
     displayName: 'Input Binary Field',
@@ -170,13 +184,30 @@ export const batchFields: INodeProperties[] = [
     type: 'options',
     default: 'first_page',
     options: [...SPLIT_POSITIONS],
-    description: 'Split before or after the QR invoice page',
+    description: 'Whether the QR invoice page starts or ends each letter',
     displayOptions: {
       show: {
         resource: ['batch'],
         operation: ['uploadAndCreate'],
         batchGroupingType: [GroupingType.Merge],
         batchSplitType: [SplitType.QrInvoice],
+      },
+    },
+  },
+  {
+    displayName: 'Split Position',
+    name: 'batchCustomSplitPosition',
+    type: 'options',
+    // last_page matches what the API applied implicitly before split position became required for custom splits
+    default: 'last_page',
+    options: [...SPLIT_POSITIONS],
+    description: 'Whether the page containing the separator starts or ends each letter',
+    displayOptions: {
+      show: {
+        resource: ['batch'],
+        operation: ['uploadAndCreate'],
+        batchGroupingType: [GroupingType.Merge],
+        batchSplitType: [SplitType.Custom],
       },
     },
   },
@@ -278,6 +309,7 @@ const uploadAndCreate: OperationHandler = async (ctx, i, orgId, credentialsType,
     address_position: addressPosition,
     grouping_type: groupingType,
     grouping_options_split_type: splitType,
+    channel_type: 'post',
   };
   if (groupingType === GroupingType.Merge) {
     if (splitType === SplitType.Page) {
@@ -287,16 +319,22 @@ const uploadAndCreate: OperationHandler = async (ctx, i, orgId, credentialsType,
       }
       batchAttributes.grouping_options_split_size = size;
     } else if (splitType === SplitType.QrInvoice) {
-      const pos = ctx.getNodeParameter('batchSplitPosition', i, '') as SplitPosition | '';
-      if (pos) {
-        batchAttributes.grouping_options_split_position = pos;
-      }
+      batchAttributes.grouping_options_split_position = ctx.getNodeParameter(
+        'batchSplitPosition',
+        i,
+        SplitPosition.FirstPage,
+      ) as SplitPosition;
     } else if (splitType === SplitType.Custom) {
       const sep = (ctx.getNodeParameter('batchSplitSeparator', i, '') as string).trim();
       if (!sep) {
         throw new Error('Split Separator is required for custom split type.');
       }
       batchAttributes.grouping_options_split_separator = sep;
+      batchAttributes.grouping_options_split_position = ctx.getNodeParameter(
+        'batchCustomSplitPosition',
+        i,
+        SplitPosition.LastPage,
+      ) as SplitPosition;
     }
   }
 
@@ -369,10 +407,12 @@ const cancel: OperationHandler = async (ctx, i, orgId, credentialsType, apiUrl) 
 
 const delete_: OperationHandler = async (ctx, i, orgId, credentialsType, apiUrl) => {
   const batchId = readEncodedIdParam(ctx, i, 'batchId', 'Batch ID');
+  const withDeliverables = ctx.getNodeParameter('batchDeleteDeliverables', i, false) as boolean;
   const res = await pingenRequest(ctx, credentialsType, {
     method: 'DELETE',
     url: `${apiUrl}/organisations/${orgId}/batches/${batchId}`,
     headers: getPingenHeaders(),
+    body: buildBatchDeletePayload(batchId, withDeliverables),
   });
   return res ? flattenJsonApi(res) : { deleted: true, batchId };
 };

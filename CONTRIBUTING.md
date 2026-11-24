@@ -4,7 +4,7 @@ Thanks for helping improve the Pingen n8n node. This document covers local devel
 
 ## Prerequisites
 
-- Node.js ≥ 20.15 (matches n8n support range)
+- Node.js ≥ 20.19 (matches n8n support range)
 - npm ≥ 9
 - Docker (optional — for running n8n locally with the node loaded)
 

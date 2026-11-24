@@ -71,5 +71,12 @@ export function buildBatchSendPayload(batchId: string, attributes: BatchSendAttr
   if (!attributes.delivery_products || attributes.delivery_products.length === 0) {
     throw new Error('Batch send requires at least one delivery_product.');
   }
-  return JSON.stringify({ data: { id: batchId, type: 'batches', attributes } });
+  return JSON.stringify({ data: { id: batchId, type: 'batches_channel_post_advanced_send', attributes } });
+}
+
+// `with_deliverables` covers every channel (letters / e-bills / emails).
+export function buildBatchDeletePayload(batchId: string, withDeliverables: boolean): string {
+  return JSON.stringify({
+    data: { id: batchId, type: 'batches', attributes: { with_deliverables: withDeliverables } },
+  });
 }

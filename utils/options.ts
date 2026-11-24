@@ -34,8 +34,8 @@ export const SPLIT_TYPES = enumToOptions(SplitType, {
   [SplitType.Custom]: 'Custom (Separator)',
 });
 export const SPLIT_POSITIONS = enumToOptions(SplitPosition, {
-  [SplitPosition.FirstPage]: 'Before QR Page',
-  [SplitPosition.LastPage]: 'After QR Page',
+  [SplitPosition.FirstPage]: 'First Page of Letter',
+  [SplitPosition.LastPage]: 'Last Page of Letter',
 });
 export const PAPER_TYPES = enumToOptions(PaperType, {
   [PaperType.Qr]: 'QR',

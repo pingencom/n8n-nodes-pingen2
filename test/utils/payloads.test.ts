@@ -159,6 +159,7 @@ const baseBatchAttributes: BatchAttributes = {
   address_position: AddressPosition.Left,
   grouping_type: GroupingType.Merge,
   grouping_options_split_type: SplitType.Page,
+  channel_type: 'post',
 };
 
 describe('buildBatchPayload', () => {
@@ -202,6 +203,7 @@ describe('buildBatchSendPayload', () => {
       }),
     );
     expect(payload.data.id).toBe('batch-1');
+    expect(payload.data.type).toBe('batches_channel_post_advanced_send');
     expect(payload.data.attributes.delivery_products).toEqual([{ country: 'CH', delivery_product: 'cheap' }]);
   });
 

@@ -327,7 +327,7 @@ describe('PingenTrigger.loadOptions.getOrganisations', () => {
             {
               id: 'org-a',
               type: 'organisations',
-              attributes: { name: 'Acme', status: 'active', plan: 'pro', default_country: 'CH' },
+              attributes: { name: 'Acme', status: 'active', plan: 'pro' },
             },
           ],
         },
@@ -336,6 +336,6 @@ describe('PingenTrigger.loadOptions.getOrganisations', () => {
     const result = await new PingenTrigger().methods.loadOptions.getOrganisations.call(
       ctx as unknown as ILoadOptionsFunctions,
     );
-    expect(result).toEqual([{ name: 'Acme (CH)', value: 'org-a' }]);
+    expect(result).toEqual([{ name: 'Acme', value: 'org-a' }]);
   });
 });

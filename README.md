@@ -7,7 +7,7 @@ Invoices, reminders, contracts, any PDF — dispatched as real letters across Eu
 ## Requirements
 
 - A [Pingen account](https://pingen.com) (free signup)
-- n8n 1.0+ running on Node.js ≥ 20.15
+- n8n 1.0+ running on Node.js ≥ 20.19 (n8n 2.38+ requires Node.js 24)
 
 ## Installation
 

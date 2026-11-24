@@ -215,6 +215,24 @@ describe('letterHandlers.send', () => {
     const body = JSON.parse((ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0].body);
     expect(body.data.attributes.meta_data.recipient.name).toBe('Jane');
   });
+
+  it('sends letter with sender-only meta_data', async () => {
+    const addr = { name: 'Acme', street: 'X', number: '1', zip: '8001', city: 'Zurich', country: 'CH' };
+    const ctx = createMockCtx({
+      params: {
+        letterId: 'letter-1',
+        deliveryProductSend: 'cheap',
+        printModeSend: 'simplex',
+        printSpectrumSend: 'grayscale',
+        registeredRecipientSend: {},
+        registeredSenderSend: { details: addr },
+      },
+      requests: [mockJsonApiSingle('letter-1', 'letters', { status: 'sent' })],
+    });
+    await letterHandlers.send(ctx, 0, ORG, CRED, API);
+    const body = JSON.parse((ctx.helpers.httpRequest as jest.Mock).mock.calls[0][0].body);
+    expect(body.data.attributes.meta_data).toEqual({ sender: addr });
+  });
 });
 
 describe('letterHandlers.get', () => {
